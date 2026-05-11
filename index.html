@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <title>펜션 예약 관리</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -61,6 +64,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dp-vacant-wrap{margin-top:10px;padding-top:10px;border-top:1px dashed #e8e8e8;}
 .dp-vacant-title{font-size:12px;font-weight:600;color:#555;margin-bottom:7px;}
 .dp-vacant-chip{font-size:11px;padding:3px 9px;border-radius:10px;background:#F0FBF6;color:#0F6E56;border:1px solid #B2E4CC;font-weight:500;}
+/* 직원 휴무 섹션 */
+.dp-dayoff-wrap{margin-top:10px;padding-top:10px;border-top:1px dashed #e8e8e8;}
+.dp-dayoff-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.dp-dayoff-title{font-size:12px;font-weight:600;color:#5a4a2a;}
+.dp-dayoff-add{padding:4px 10px;border:1px solid #F5D78A;border-radius:8px;background:#FFFBEC;font-size:11px;color:#7a5a1a;cursor:pointer;font-weight:600;}
+.dp-dayoff-add:hover{background:#FFF4D6;}
+.dp-dayoff-list{display:flex;flex-wrap:wrap;gap:5px;}
+.dp-dayoff-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 4px 4px 10px;border-radius:10px;background:#FFF4D6;color:#5a4a2a;border:1px solid #F5D78A;font-weight:500;}
+.dp-dayoff-chip .dp-dayoff-del{background:transparent;border:none;color:#a07c2c;font-size:13px;cursor:pointer;padding:0 4px;line-height:1;}
+.dp-dayoff-chip .dp-dayoff-del:hover{color:#5a4a2a;}
+.dp-dayoff-memo{font-size:10px;color:#8b7340;font-style:italic;margin-left:4px;}
 /* 입실완료 카드 */
 .dp-card.checked-in{background:linear-gradient(90deg,#E8F8F0 0%,#fff 35%);border-left:4px solid #1D9E75;}
 .dp-card.checked-in:hover{background:linear-gradient(90deg,#DDF3E6 0%,#f8fdfa 35%);}
@@ -111,6 +125,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .more{font-size:9px;color:#378ADD;font-weight:600;padding:1px 2px}
 .holiday-label{font-size:8px;color:#d63031;font-weight:600;padding:1px 3px;border-radius:3px;background:#fff0f0;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:1.3}
 @media(max-width:480px){.holiday-label{font-size:7px;padding:0 2px}}
+.dayoff-label{font-size:8px;color:#5a4a2a;font-weight:600;padding:1px 3px;border-radius:3px;background:#FFF4D6;border:1px solid #F5D78A;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:1.3}
+@media(max-width:480px){.dayoff-label{font-size:7px;padding:0 2px}}
 .cell.holiday .dnum{color:#d63031}
 .cell.holiday.today .dnum{background:#d63031;color:#fff}
 .cell.sunday .dnum{color:#e74c3c}
@@ -325,6 +341,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- 직원 휴무 추가/수정 모달 -->
+<div class="modal-bg" id="dayoffModalBg" onclick="if(event.target===this)closeDayoffModal()">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-handle"></div>
+    <h3 style="display:flex;align-items:center;gap:8px;"><span>🌙</span><span>직원 휴무 등록</span></h3>
+    <div id="dayoffModalDate" style="font-size:13px;color:#5a4a2a;background:#FFF4D6;border:1px solid #F5D78A;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-weight:500;"></div>
+    <div class="fr">
+      <label>휴무 직원 이름 <span style="color:#d63031;">*</span></label>
+      <input type="text" id="dayoffName" placeholder="예: 존" maxlength="30"/>
+    </div>
+    <div class="fr">
+      <label>메모 <span style="color:#aaa;font-weight:400;">(선택)</span></label>
+      <input type="text" id="dayoffMemo" placeholder="예: 병원 진료, 개인 사정 등" maxlength="60"/>
+    </div>
+    <div id="dayoffExistingList" style="margin-top:4px;"></div>
+    <div class="ma" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button class="btn-c" onclick="closeDayoffModal()" style="padding:9px 18px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#666;cursor:pointer;font-size:13px;">취소</button>
+      <button class="btn-s" onclick="saveDayoff()" style="padding:9px 18px;border:none;border-radius:10px;background:#7a5a1a;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">저장</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // 비밀번호 보호 — 열람(2354) / 관리자(1426)
 var isAdmin = false;
@@ -418,6 +456,7 @@ var DAYS = ['일','월','화','수','목','금','토'];
 var MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 var cur = new Date(), curP = 'A', editId = null, isPaid = true, selDate = null, curChannel = null, payMethod = 'card';
 var bookings = [];
+var staffDayoffs = []; // 직원 휴무 목록 [{id, date:'YYYY-MM-DD', name:'존', memo:''}]
 
 function setPayMethod(m){
   payMethod = m;
@@ -448,6 +487,120 @@ function toast(msg){
 }
 
 function saveLocal(){localStorage.setItem('pension_bookings',JSON.stringify(bookings))}
+function saveDayoffsLocal(){localStorage.setItem('pension_dayoffs',JSON.stringify(staffDayoffs))}
+function getDayoffsOnDate(ds){return staffDayoffs.filter(function(o){return o.date===ds;});}
+
+// 휴무자 모달용 현재 작업 날짜
+var dayoffModalDate = null;
+
+function openDayoffModal(ds){
+  if(!isAdmin){ toast('관리자만 등록 가능합니다.'); return; }
+  dayoffModalDate = ds;
+  var d = pd(ds);
+  var label = d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DAYS[d.getDay()]+')';
+  document.getElementById('dayoffModalDate').textContent = '📅 '+label;
+  document.getElementById('dayoffName').value = '';
+  document.getElementById('dayoffMemo').value = '';
+  // 이미 등록된 휴무자 목록 표시
+  renderDayoffExistingList();
+  document.getElementById('dayoffModalBg').classList.add('open');
+  setTimeout(function(){var i=document.getElementById('dayoffName');if(i)i.focus();},120);
+}
+
+function renderDayoffExistingList(){
+  var box = document.getElementById('dayoffExistingList');
+  if(!box || !dayoffModalDate){ if(box) box.innerHTML=''; return; }
+  var list = getDayoffsOnDate(dayoffModalDate);
+  if(list.length===0){ box.innerHTML=''; return; }
+  var html = '<div style="margin-top:6px;padding-top:10px;border-top:1px dashed #e8e8e8;">';
+  html += '<div style="font-size:11px;color:#888;font-weight:600;margin-bottom:6px;">이 날 등록된 휴무자</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+  list.forEach(function(o){
+    var memoStr = o.memo ? ' <span style="font-size:10px;color:#8b7340;font-style:italic;">— '+o.memo.replace(/</g,'&lt;')+'</span>' : '';
+    html += '<span class="dp-dayoff-chip">👤 '+o.name.replace(/</g,'&lt;')+memoStr+'<button class="dp-dayoff-del" onclick="deleteDayoff(\''+o.id+'\',true)" title="삭제">✕</button></span>';
+  });
+  html += '</div></div>';
+  box.innerHTML = html;
+}
+
+function closeDayoffModal(){
+  document.getElementById('dayoffModalBg').classList.remove('open');
+  dayoffModalDate = null;
+}
+
+function saveDayoff(){
+  if(!isAdmin){ toast('관리자만 등록 가능합니다.'); return; }
+  if(!dayoffModalDate){ closeDayoffModal(); return; }
+  var name = (document.getElementById('dayoffName').value||'').trim();
+  var memo = (document.getElementById('dayoffMemo').value||'').trim();
+  if(!name){ toast('직원 이름을 입력해 주세요.'); return; }
+  var data = {
+    date: dayoffModalDate,
+    name: name,
+    memo: memo,
+    createdAt: Date.now()
+  };
+  // Firebase 우선, 실패 시 로컬
+  if(window.fbReady && typeof window.fbAddDayoff === 'function'){
+    window.fbAddDayoff(data).then(function(){
+      toast('🌙 휴무 등록 완료');
+      // onSnapshot이 자동으로 staffDayoffs 갱신 → 화면 자동 새로고침
+      // 모달은 닫지 않고 입력만 비워 추가 등록 가능하게
+      document.getElementById('dayoffName').value = '';
+      document.getElementById('dayoffMemo').value = '';
+      setTimeout(renderDayoffExistingList, 400);
+    }).catch(function(err){
+      console.error('휴무 등록 실패', err);
+      toast('등록 실패. 다시 시도해 주세요.');
+    });
+  } else {
+    // 오프라인/Firebase 미준비 — 로컬에만 저장
+    data.id = uid();
+    staffDayoffs.push(data);
+    saveDayoffsLocal();
+    toast('🌙 휴무 등록 (오프라인)');
+    document.getElementById('dayoffName').value = '';
+    document.getElementById('dayoffMemo').value = '';
+    renderDayoffExistingList();
+    render();
+    if(selDate) renderDayPanel();
+  }
+}
+
+function deleteDayoff(id, fromModal){
+  if(!isAdmin){ toast('관리자만 삭제 가능합니다.'); return; }
+  if(!confirm('이 휴무 등록을 삭제할까요?')) return;
+  if(window.fbReady && typeof window.fbDeleteDayoff === 'function'){
+    window.fbDeleteDayoff(id).then(function(){
+      toast('휴무 삭제됨');
+      if(fromModal) setTimeout(renderDayoffExistingList, 400);
+    }).catch(function(err){
+      console.error('휴무 삭제 실패', err);
+      toast('삭제 실패. 다시 시도해 주세요.');
+    });
+  } else {
+    staffDayoffs = staffDayoffs.filter(function(o){return o.id!==id;});
+    saveDayoffsLocal();
+    toast('휴무 삭제됨');
+    if(fromModal) renderDayoffExistingList();
+    render();
+    if(selDate) renderDayPanel();
+  }
+}
+
+// Enter 키로 휴무 저장
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){
+    var modal = document.getElementById('dayoffModalBg');
+    if(modal && modal.classList.contains('open')){
+      var active = document.activeElement;
+      if(active && (active.id === 'dayoffName' || active.id === 'dayoffMemo')){
+        e.preventDefault();
+        saveDayoff();
+      }
+    }
+  }
+});
 
 // ── 한국 공휴일 ──
 var KR_FIXED_HOLIDAYS = {
@@ -500,6 +653,8 @@ function getHolidayName(ds){
 (function(){
   var saved=localStorage.getItem('pension_bookings');
   if(saved){try{bookings=JSON.parse(saved)}catch(e){bookings=[]}}
+  var savedDayoffs=localStorage.getItem('pension_dayoffs');
+  if(savedDayoffs){try{staffDayoffs=JSON.parse(savedDayoffs)}catch(e){staffDayoffs=[]}}
   render();
 })();
 
@@ -924,6 +1079,33 @@ function renderDayPanel(){
     h += '<div class="dp-vacant-wrap"><div style="font-size:12px;color:#0F6E56;font-weight:600;">'+fullMsg+'</div></div>';
   }
 
+  // ── 직원 휴무 섹션 ──
+  var dayoffsToday = getDayoffsOnDate(selDate);
+  if(dayoffsToday.length > 0 || isAdmin){
+    var doTitle = TH ? '🌙 พนักงานหยุด' : '🌙 직원 휴무';
+    h += '<div class="dp-dayoff-wrap">';
+    h += '<div class="dp-dayoff-head"><span class="dp-dayoff-title">'+doTitle+(dayoffsToday.length>0?' ('+dayoffsToday.length+')':'')+'</span>';
+    if(isAdmin){
+      h += '<button class="dp-dayoff-add" onclick="openDayoffModal(\''+selDate+'\')">+ '+(TH?'เพิ่ม':'추가')+'</button>';
+    }
+    h += '</div>';
+    if(dayoffsToday.length > 0){
+      h += '<div class="dp-dayoff-list">';
+      dayoffsToday.forEach(function(o){
+        var memoStr = o.memo ? '<span class="dp-dayoff-memo">— '+o.memo.replace(/</g,'&lt;')+'</span>' : '';
+        h += '<span class="dp-dayoff-chip">👤 '+o.name.replace(/</g,'&lt;')+memoStr;
+        if(isAdmin){
+          h += '<button class="dp-dayoff-del" onclick="deleteDayoff(\''+o.id+'\')" title="삭제">✕</button>';
+        }
+        h += '</span>';
+      });
+      h += '</div>';
+    } else if(isAdmin){
+      h += '<div style="font-size:11px;color:#bbb;">'+(TH?'ยังไม่มีพนักงานหยุด':'등록된 휴무자가 없습니다')+'</div>';
+    }
+    h += '</div>';
+  }
+
   h+='</div>';
   panel.innerHTML=h;
 }
@@ -963,6 +1145,15 @@ function addCell(grid,date,other,today,ry,rm,lastDay){
   // 공휴일 이름 표시
   if(holidayName){
     var hl=document.createElement('span');hl.className='holiday-label';hl.textContent=holidayName;cell.appendChild(hl);
+  }
+  // 직원 휴무 표시
+  var dayoffsOnCell = getDayoffsOnDate(ds);
+  if(dayoffsOnCell.length>0){
+    var dol=document.createElement('span');
+    dol.className='dayoff-label';
+    dol.textContent='🌙 '+dayoffsOnCell.map(function(o){return o.name;}).join(',');
+    (function(ds4){dol.onclick=function(e){e.stopPropagation();selectDay(ds4);};})(ds);
+    cell.appendChild(dol);
   }
   if(isFirst){var bf=document.createElement('div');bf.className='dbadge db-f';bf.textContent='월초';bf.onclick=function(e){e.stopPropagation();showAlert('first',ry,rm)};cell.appendChild(bf)}
   if(isLast){var bl=document.createElement('div');bl.className='dbadge db-l';bl.textContent='월말';bl.onclick=function(e){e.stopPropagation();showAlert('last',ry,rm)};cell.appendChild(bl)}
@@ -1004,25 +1195,32 @@ function updateThaiBtn(){
 
 function selectDay(ds){
   var evs=getOnDate(ds);
-  if(evs.length===0){
-    // 예약 없는 날
+  var dayoffsHere = getDayoffsOnDate(ds);
+  if(evs.length===0 && dayoffsHere.length===0){
+    // 완전히 빈 날
     if(!isAdmin){ toast('이 날짜에는 예약이 없습니다.'); return; }
-    // 관리자: 예약 없는 날은 dayPanel 닫고 새 예약 모달 바로 열기
-    selDate=null;
+    // 관리자: 빈 날 → day-panel 열어서 휴무 등록 가능하게 (이전엔 바로 예약 모달)
+    selDate=(selDate===ds)?null:ds;
     renderDayPanel();
+    if(selDate){setTimeout(function(){var p=document.getElementById('dayPanel');if(p)p.scrollIntoView({behavior:'smooth',block:'nearest'})},50)}
     renderGrid(cur.getFullYear(),cur.getMonth());
-    openNew(ds);
+    updateThaiBtn();
   } else {
-    // 예약 있는 날 → 토스트 알림 표시
+    // 예약 또는 휴무자가 있는 날 → 토스트 알림 표시
     var d=pd(ds);
     var dateStr=(d.getMonth()+1)+'월 '+d.getDate()+'일';
-    var checkIns=evs.filter(function(b){return b.checkIn===ds});
-    var staying=evs.filter(function(b){return b.checkIn!==ds});
-    var msg=dateStr+' 예약 '+evs.length+'건';
-    if(checkIns.length>0)msg+=' (오늘 체크인 '+checkIns.length+'건)';
-    if(staying.length>0&&checkIns.length>0)msg+='·연박 '+staying.length+'건';
-    else if(staying.length>0)msg+=' (연박 '+staying.length+'건)';
-    toast('📅 '+msg);
+    if(evs.length>0){
+      var checkIns=evs.filter(function(b){return b.checkIn===ds});
+      var staying=evs.filter(function(b){return b.checkIn!==ds});
+      var msg=dateStr+' 예약 '+evs.length+'건';
+      if(checkIns.length>0)msg+=' (오늘 체크인 '+checkIns.length+'건)';
+      if(staying.length>0&&checkIns.length>0)msg+='·연박 '+staying.length+'건';
+      else if(staying.length>0)msg+=' (연박 '+staying.length+'건)';
+      if(dayoffsHere.length>0) msg+=' · 🌙휴무 '+dayoffsHere.length;
+      toast('📅 '+msg);
+    } else if(dayoffsHere.length>0){
+      toast('🌙 '+dateStr+' 휴무자 '+dayoffsHere.map(function(o){return o.name;}).join(', '));
+    }
     // 항상 목록 패널 표시 (토글)
     selDate=(selDate===ds)?null:ds;
     renderDayPanel();
@@ -2257,7 +2455,7 @@ function renderStats(){
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyClX8eRlHKKTsakkGbUKYDbd86CjEBs-wA",
@@ -2271,7 +2469,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 실시간 동기화 - Firebase에서 변경사항 자동 반영
+// ─────────── 예약 실시간 동기화 ───────────
 onSnapshot(collection(db, 'bookings'), function(snap) {
   bookings = snap.docs.map(function(d){ 
     var data = d.data();
@@ -2283,11 +2481,140 @@ onSnapshot(collection(db, 'bookings'), function(snap) {
   else { render(); if(selDate) renderDayPanel(); }
 });
 
-// 전역 Firebase 함수
+// ─────────── 직원 휴무 실시간 동기화 ───────────
+onSnapshot(collection(db, 'staffDayoffs'), function(snap) {
+  staffDayoffs = snap.docs.map(function(d){
+    var data = d.data();
+    data.id = d.id;
+    return data;
+  });
+  saveDayoffsLocal();
+  if(curP !== 'STATS'){ render(); if(selDate) renderDayPanel(); }
+  // 휴무 모달이 열려있다면 목록 갱신
+  var dm = document.getElementById('dayoffModalBg');
+  if(dm && dm.classList.contains('open') && typeof renderDayoffExistingList === 'function'){
+    renderDayoffExistingList();
+  }
+});
+
+// 전역 Firebase 함수 (예약)
 window.fbAdd = function(data) { return addDoc(collection(db, 'bookings'), data); };
 window.fbUpdate = function(id, data) { return updateDoc(doc(db, 'bookings', id), data); };
 window.fbDelete = function(id) { return deleteDoc(doc(db, 'bookings', id)); };
+
+// 전역 Firebase 함수 (휴무자)
+window.fbAddDayoff = function(data) { return addDoc(collection(db, 'staffDayoffs'), data); };
+window.fbUpdateDayoff = function(id, data) { return updateDoc(doc(db, 'staffDayoffs', id), data); };
+window.fbDeleteDayoff = function(id) { return deleteDoc(doc(db, 'staffDayoffs', id)); };
+
 window.fbReady = true;
+
+// ─────────── 앱 버전 자동 업데이트 시스템 ───────────
+// 동작 방식:
+//   1) 앱이 자기 자신의 버전을 가지고 시작 (APP_VERSION 상수)
+//   2) Firestore의 app_meta/version 문서를 실시간 감지
+//   3) 서버 버전이 현재 앱 버전보다 새로우면 → 자동 새로고침 (캐시 무시)
+//   4) 관리자가 새 버전 배포 후 publishNewVersion()을 호출하면
+//      모든 기기가 5초 이내에 자동으로 새 버전을 받음
+const APP_VERSION = '2026-05-11-01'; // ← 새 버전 배포할 때마다 이 값을 올리세요
+window.__APP_VERSION__ = APP_VERSION;
+
+// 첫 1회는 onSnapshot 첫 콜백 — 같은 버전이면 무시
+let _versionInitialized = false;
+
+onSnapshot(doc(db, 'app_meta', 'version'), function(snapshot) {
+  if(!snapshot.exists()){
+    // 버전 문서가 없으면 현재 버전으로 초기화 (관리자 권한이 있어야 작동)
+    if(!_versionInitialized){
+      _versionInitialized = true;
+      setDoc(doc(db, 'app_meta', 'version'), {
+        version: APP_VERSION,
+        updatedAt: Date.now(),
+        note: '초기 버전'
+      }).catch(function(){/* 권한 없으면 무시 */});
+    }
+    return;
+  }
+  const data = snapshot.data();
+  const serverVersion = data.version;
+
+  if(!_versionInitialized){
+    _versionInitialized = true;
+    // 첫 로드 시 — 서버 버전이 더 새로우면 즉시 새로고침
+    if(serverVersion && serverVersion !== APP_VERSION){
+      console.log('[자동 업데이트] 서버 버전:', serverVersion, '/ 현재:', APP_VERSION);
+      forceReload();
+    }
+    return;
+  }
+
+  // 실행 중 새 버전 감지
+  if(serverVersion && serverVersion !== APP_VERSION){
+    console.log('[자동 업데이트] 새 버전 감지! 5초 후 새로고침합니다…');
+    showUpdateBanner(serverVersion);
+    setTimeout(forceReload, 5000);
+  }
+});
+
+// 캐시를 무시한 강제 새로고침
+function forceReload(){
+  try {
+    // 브라우저 캐시 강제 무효화 + URL에 캐시버스터 쿼리 추가
+    const u = new URL(window.location.href);
+    u.searchParams.set('_v', Date.now().toString());
+    window.location.replace(u.toString());
+  } catch(e){
+    window.location.reload();
+  }
+}
+
+// 업데이트 알림 배너
+function showUpdateBanner(newVersion){
+  let bn = document.getElementById('updateBanner');
+  if(bn) return;
+  bn = document.createElement('div');
+  bn.id = 'updateBanner';
+  bn.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#378ADD;color:#fff;padding:12px 16px;text-align:center;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;gap:10px;animation:slideDown .3s ease;';
+  bn.innerHTML = '<span>🎉 새 버전이 있어요! 잠시 후 자동으로 업데이트됩니다…</span>' +
+    '<button onclick="window.__forceReloadNow()" style="padding:5px 12px;border:1px solid rgba(255,255,255,.6);border-radius:6px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">지금 업데이트</button>';
+  // slideDown 키프레임
+  if(!document.getElementById('updateBannerStyle')){
+    const st = document.createElement('style');
+    st.id = 'updateBannerStyle';
+    st.textContent = '@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}';
+    document.head.appendChild(st);
+  }
+  document.body.appendChild(bn);
+}
+window.__forceReloadNow = forceReload;
+
+// 관리자 콘솔용: 새 버전 배포 후 모든 기기 동기화
+window.publishNewVersion = function(versionStr, note){
+  if(!versionStr) versionStr = APP_VERSION;
+  return setDoc(doc(db, 'app_meta', 'version'), {
+    version: versionStr,
+    updatedAt: Date.now(),
+    note: note || ''
+  }).then(function(){
+    console.log('✅ 새 버전 게시 완료:', versionStr);
+    return versionStr;
+  });
+};
+
+// 페이지 가시성 변화 — 백그라운드에서 돌아왔을 때도 버전 체크
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible'){
+    getDoc(doc(db, 'app_meta', 'version')).then(function(s){
+      if(s.exists()){
+        const v = s.data().version;
+        if(v && v !== APP_VERSION){
+          console.log('[가시성 복귀] 새 버전 감지');
+          forceReload();
+        }
+      }
+    }).catch(function(){});
+  }
+});
 </script>
 
 
@@ -2543,6 +2870,24 @@ window.fbReady = true;
       thWasOpen = nowOpen;
     });
     mo4.observe(thaiBg, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  // ---- 6) 직원 휴무 등록 모달 (dayoffModalBg) ----
+  var dayoffBg = document.getElementById('dayoffModalBg');
+  if(dayoffBg){
+    var doWasOpen = false;
+    var mo5 = new MutationObserver(function(){
+      var nowOpen = dayoffBg.classList.contains('open');
+      if(nowOpen && !doWasOpen){
+        pushLayer('dayoffModal', function(){
+          if(typeof closeDayoffModal === 'function') closeDayoffModal();
+        });
+      } else if(!nowOpen && doWasOpen){
+        popLayer('dayoffModal');
+      }
+      doWasOpen = nowOpen;
+    });
+    mo5.observe(dayoffBg, { attributes: true, attributeFilter: ['class'] });
   }
 })();
 
