@@ -551,7 +551,25 @@ function saveDayoff(){
       setTimeout(renderDayoffExistingList, 400);
     }).catch(function(err){
       console.error('휴무 등록 실패', err);
-      toast('등록 실패. 다시 시도해 주세요.');
+      // 권한(보안 규칙) 오류인지 확인 → 폴백으로 로컬 저장 + 정확한 안내
+      var code = (err && err.code) || '';
+      var msg = (err && err.message) || String(err);
+      // Firebase 실패해도 일단 로컬에는 저장 → 현재 기기에는 즉시 표시됨
+      data.id = uid();
+      data._localOnly = true;
+      staffDayoffs.push(data);
+      saveDayoffsLocal();
+      render();
+      if(selDate) renderDayPanel();
+      document.getElementById('dayoffName').value = '';
+      document.getElementById('dayoffMemo').value = '';
+      renderDayoffExistingList();
+      // 사용자에게 원인 안내
+      if(code === 'permission-denied' || /permission|insufficient|PERMISSION/i.test(msg)){
+        showFirestoreRuleHelp();
+      } else {
+        toast('서버 저장 실패 (이 기기에만 저장됨): '+(code||msg).slice(0,40));
+      }
     });
   } else {
     // 오프라인/Firebase 미준비 — 로컬에만 저장
@@ -567,18 +585,80 @@ function saveDayoff(){
   }
 }
 
+// Firestore 보안 규칙 안내 모달
+function showFirestoreRuleHelp(){
+  var existing = document.getElementById('ruleHelpModalBg');
+  if(existing){ existing.style.display='flex'; return; }
+  var bg = document.createElement('div');
+  bg.id = 'ruleHelpModalBg';
+  bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;';
+  bg.onclick = function(e){ if(e.target===bg) bg.style.display='none'; };
+  bg.innerHTML =
+    '<div style="background:#fff;border-radius:16px;max-width:480px;width:100%;padding:1.4rem 1.4rem 1.6rem;max-height:92vh;overflow-y:auto;">'+
+    '  <div style="display:flex;align-items:center;gap:8px;margin-bottom:.8rem;">'+
+    '    <span style="font-size:22px;">⚠️</span>'+
+    '    <h3 style="font-size:16px;font-weight:700;color:#c0392b;margin:0;">Firestore 권한 오류</h3>'+
+    '  </div>'+
+    '  <div style="font-size:13px;color:#444;line-height:1.6;margin-bottom:1rem;">'+
+    '    휴무 데이터를 Firebase에 저장하려면 <b>보안 규칙</b>에 <code style="background:#f0f0f0;padding:1px 5px;border-radius:3px;">staffDayoffs</code> 컬렉션을 추가해야 합니다.<br><br>'+
+    '    <b>해결 방법:</b><br>'+
+    '    1. <a href="https://console.firebase.google.com/project/stay-you-booking/firestore/rules" target="_blank" style="color:#378ADD;text-decoration:underline;">Firebase 콘솔 → Firestore → 규칙</a> 으로 이동<br>'+
+    '    2. 아래 규칙으로 교체 후 <b>게시</b> 클릭<br>'+
+    '    3. 이 앱에서 다시 휴무를 저장해보세요'+
+    '  </div>'+
+    '  <div style="background:#1e1e1e;color:#e8e8e8;border-radius:8px;padding:.85rem 1rem;font-family:Menlo,Consolas,monospace;font-size:11px;line-height:1.5;overflow-x:auto;margin-bottom:1rem;">'+
+    '<pre style="margin:0;white-space:pre;color:#e8e8e8;">rules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{db}/documents {\n    match /bookings/{doc} {\n      allow read, write: if true;\n    }\n    match /staffDayoffs/{doc} {\n      allow read, write: if true;\n    }\n    match /app_meta/{doc} {\n      allow read, write: if true;\n    }\n  }\n}</pre>'+
+    '  </div>'+
+    '  <div style="font-size:11px;color:#888;margin-bottom:1rem;line-height:1.5;">'+
+    '    💡 이미 <code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;">bookings</code>만 허용된 규칙이 있다면 <code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;">staffDayoffs</code>와 <code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;">app_meta</code> 두 줄만 추가하면 됩니다.'+
+    '  </div>'+
+    '  <div style="display:flex;gap:8px;justify-content:flex-end;">'+
+    '    <button onclick="document.getElementById(\'ruleHelpModalBg\').style.display=\'none\'" style="padding:8px 18px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;color:#666;cursor:pointer;font-size:13px;">닫기</button>'+
+    '    <button onclick="window.__copyFirestoreRule()" style="padding:8px 18px;border:none;border-radius:10px;background:#378ADD;color:#fff;cursor:pointer;font-size:13px;font-weight:600;">규칙 복사</button>'+
+    '  </div>'+
+    '</div>';
+  document.body.appendChild(bg);
+}
+
+window.__copyFirestoreRule = function(){
+  var rule = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{db}/documents {\n    match /bookings/{doc} {\n      allow read, write: if true;\n    }\n    match /staffDayoffs/{doc} {\n      allow read, write: if true;\n    }\n    match /app_meta/{doc} {\n      allow read, write: if true;\n    }\n  }\n}";
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(rule).then(function(){ toast('규칙 복사됨! Firebase 콘솔에 붙여넣기 하세요'); })
+      .catch(function(){ toast('복사 실패 - 수동으로 선택해 복사해 주세요'); });
+  } else {
+    toast('복사 미지원 - 수동으로 선택해 복사해 주세요');
+  }
+};
+
 function deleteDayoff(id, fromModal){
   if(!isAdmin){ toast('관리자만 삭제 가능합니다.'); return; }
   if(!confirm('이 휴무 등록을 삭제할까요?')) return;
-  if(window.fbReady && typeof window.fbDeleteDayoff === 'function'){
+  // 로컬에만 저장된 항목인지 확인 (서버 저장 실패한 폴백 데이터)
+  var target = staffDayoffs.filter(function(o){return o.id===id;})[0];
+  var isLocalOnly = target && target._localOnly === true;
+
+  if(!isLocalOnly && window.fbReady && typeof window.fbDeleteDayoff === 'function'){
     window.fbDeleteDayoff(id).then(function(){
       toast('휴무 삭제됨');
       if(fromModal) setTimeout(renderDayoffExistingList, 400);
     }).catch(function(err){
       console.error('휴무 삭제 실패', err);
-      toast('삭제 실패. 다시 시도해 주세요.');
+      var code = (err && err.code) || '';
+      var msg = (err && err.message) || String(err);
+      // 권한 오류면 로컬에서만 삭제하고 안내
+      staffDayoffs = staffDayoffs.filter(function(o){return o.id!==id;});
+      saveDayoffsLocal();
+      render();
+      if(selDate) renderDayPanel();
+      if(fromModal) renderDayoffExistingList();
+      if(code === 'permission-denied' || /permission|insufficient|PERMISSION/i.test(msg)){
+        showFirestoreRuleHelp();
+      } else {
+        toast('서버 삭제 실패 (이 기기에만 반영됨): '+(code||msg).slice(0,40));
+      }
     });
   } else {
+    // 로컬 전용 항목이거나 오프라인 — 로컬에서만 삭제
     staffDayoffs = staffDayoffs.filter(function(o){return o.id!==id;});
     saveDayoffsLocal();
     toast('휴무 삭제됨');
@@ -2483,17 +2563,31 @@ onSnapshot(collection(db, 'bookings'), function(snap) {
 
 // ─────────── 직원 휴무 실시간 동기화 ───────────
 onSnapshot(collection(db, 'staffDayoffs'), function(snap) {
-  staffDayoffs = snap.docs.map(function(d){
+  var serverDayoffs = snap.docs.map(function(d){
     var data = d.data();
     data.id = d.id;
     return data;
   });
+  // 서버 저장 실패해서 로컬에만 남아있는 항목들은 보존
+  var localOnly = staffDayoffs.filter(function(o){ return o._localOnly === true; });
+  staffDayoffs = serverDayoffs.concat(localOnly);
   saveDayoffsLocal();
   if(curP !== 'STATS'){ render(); if(selDate) renderDayPanel(); }
   // 휴무 모달이 열려있다면 목록 갱신
   var dm = document.getElementById('dayoffModalBg');
   if(dm && dm.classList.contains('open') && typeof renderDayoffExistingList === 'function'){
     renderDayoffExistingList();
+  }
+}, function(err){
+  // onSnapshot 에러 (예: 권한 거부) → 로컬 데이터 유지, 안내 표시
+  console.error('staffDayoffs 실시간 동기화 실패:', err);
+  var code = (err && err.code) || '';
+  if(code === 'permission-denied' && typeof showFirestoreRuleHelp === 'function'){
+    // 화면 로드 직후엔 너무 빨라서 한 번만 띄움
+    if(!window.__ruleHelpShown){
+      window.__ruleHelpShown = true;
+      setTimeout(showFirestoreRuleHelp, 800);
+    }
   }
 });
 
