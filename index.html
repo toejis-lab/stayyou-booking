@@ -1897,10 +1897,12 @@ function openNew(ds){
   document.getElementById('btnDel').style.visibility='hidden';
   var p=curP==='ALL'?'A':curP;
   document.getElementById('mPension').value=p;
-  populateRooms(p);
   ['mName','mPeople','mPhone','mAmount','mMemo'].forEach(function(id){document.getElementById(id).value=''});
+  // 날짜를 먼저 설정한 후 populateRooms를 호출해야
+  // 해당 날짜에 이미 예약된 객실이 처음부터 비활성화로 표시됨
   document.getElementById('mIn').value=ds||'';
   document.getElementById('mOut').value=ds?dk(addD(pd(ds),1)):'';
+  populateRooms(p);
   setPaid(true);setChecked([]);clearChannel();setPayMethod('card');
   [1,2,3,4].forEach(function(i){var btn=document.getElementById('nightBtn'+i);if(btn){btn.style.background='#fff';btn.style.color='#555';btn.style.borderColor='#e0e0e0';}});
   if(ds){var btn1=document.getElementById('nightBtn1');if(btn1){btn1.style.background='#378ADD';btn1.style.color='#fff';btn1.style.borderColor='#378ADD';}}
