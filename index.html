@@ -1029,7 +1029,7 @@ function renderDayPanel(){
       h+='<span class="dp-paid '+(b.paid?'dp-paid-y':'dp-paid-n')+'">'+paidLabel+'</span></div>';
       h+='<div class="dp-info"><span class="dp-ii">'+ciLabel+' <span>'+b.checkIn+'</span></span><span class="dp-ii">'+coLabel+' <span>'+b.checkOut+'</span></span><span class="dp-ii">'+nights+nightLabel+'</span>';
       if(b.people)h+='<span class="dp-ii">'+pplLabel+' <span>'+b.people+(TH?' คน':'명')+'</span></span>';
-      if(b.phone)h+='<span class="dp-ii">'+telLabel+' <span>'+b.phone+'</span></span>';
+      if(b.phone)h+='<span class="dp-ii">'+telLabel+' <a href="tel:'+b.phone.replace(/[^0-9+]/g,'')+'" onclick="event.stopPropagation();" style="color:#378ADD;text-decoration:none;font-weight:500;">'+b.phone+'</a></span>';
       var optFee=b.optionFee||calcOptionFee(b.options||[]);
       var totalAmt=(b.amount||0); // 옵션비 + 현장추가 포함 전체 금액
       var onsiteSumForCard=calcOnsiteTotal(b);
@@ -1378,7 +1378,7 @@ function showUnpaidDetail(){
     var payIcon2=(b.payMethod==='cash')?'💵 현금':'💳 카드';
     if(totalAmt2)h+='<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;color:#aaa;">미입금 금액 <span style="font-size:10px;color:#888;">'+payIcon2+'</span></span><span style="font-size:15px;font-weight:700;color:#854F0B;">'+fmt(totalAmt2)+'</span></div>';
     if(optFee2>0)h+='<div style="display:flex;justify-content:flex-end;gap:12px;margin-top:2px;font-size:11px;color:#aaa;"><span>옵션 '+fmt(optFee2)+' 포함</span></div>';
-    if(b.phone)h+='<div style="margin-top:4px;font-size:12px;color:#888;">📞 '+b.phone+'</div>';
+    if(b.phone)h+='<div style="margin-top:4px;font-size:12px;color:#888;">📞 <a href="tel:'+b.phone.replace(/[^0-9+]/g,'')+'" style="color:#378ADD;text-decoration:none;font-weight:500;">'+b.phone+'</a></div>';
     if(b.memo)h+='<div style="margin-top:4px;font-size:11px;color:#378ADD;font-style:italic;">"'+b.memo+'"</div>';
     if(isAdmin)h+='<div style="margin-top:8px;text-align:right;"><button data-bid="'+b.id+'" onclick="markPaidBtn(this)" style="padding:6px 14px;border:none;border-radius:8px;background:#1D9E75;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">✅ 입금 처리</button></div>';
     h+='</div>';
@@ -2037,7 +2037,7 @@ function openCheckInModal(id){
   info += '</div>';
   info += '<div style="font-size:12px;color:#555;margin-top:3px;">'+penLabel+(rd?' · '+rd:'')+'</div>';
   info += '<div style="font-size:11px;color:#888;margin-top:2px;">📅 '+b.checkIn+' → '+b.checkOut+' ('+nights+'박)';
-  if(b.phone) info += ' &nbsp; 📞 '+b.phone;
+  if(b.phone) info += ' &nbsp; 📞 <a href="tel:'+b.phone.replace(/[^0-9+]/g,'')+'" style="color:#378ADD;text-decoration:none;font-weight:500;">'+b.phone+'</a>';
   info += '</div>';
   if(b.memo){
     info += '<div style="font-size:11px;color:#378ADD;margin-top:5px;font-style:italic;background:#fff;padding:5px 8px;border-radius:6px;border:1px solid #DCE9F8;">예약 메모: "'+b.memo+'"</div>';
