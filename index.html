@@ -1410,7 +1410,10 @@ function markPaidBtn(btn){
 
 function onPensionChange(){populateRooms(document.getElementById('mPension').value);updateOpts()}
 function populateRooms(p){
-  var sel=document.getElementById('mRoom');sel.innerHTML='';
+  var sel=document.getElementById('mRoom');
+  // 이전에 사용자가 선택한 객실 값을 기억
+  var prevSelected=sel.value;
+  sel.innerHTML='';
   var ci=document.getElementById('mIn').value;
   var co=document.getElementById('mOut').value;
   // 예약된 방 계산 (현재 수정 중인 예약 제외)
@@ -1430,6 +1433,7 @@ function populateRooms(p){
   var stayBAllBooked=bookedRooms.indexOf('전체대관')>=0;
   var STAY_B_ROOMS=['스테이 1','스테이 2','스테이 3','스테이 4','스테이 독채 2층'];
   var firstAvail=null;
+  var prevStillAvail=false;
   getRooms(p).forEach(function(r){
     var o=document.createElement('option');
     o.value=r.val;o.textContent=r.label;
@@ -1442,11 +1446,17 @@ function populateRooms(p){
       o.style.color='#bbb';
     } else {
       if(!firstAvail)firstAvail=r.val;
+      // 이전에 선택한 객실이 여전히 예약 가능한지 확인
+      if(prevSelected&&r.val===prevSelected)prevStillAvail=true;
     }
     sel.appendChild(o);
   });
-  // 첫 번째 가능한 방 자동 선택
-  if(firstAvail)sel.value=firstAvail;
+  // 이전 선택이 여전히 가능하면 유지, 아니면 첫 번째 가능한 방 자동 선택
+  if(prevStillAvail){
+    sel.value=prevSelected;
+  } else if(firstAvail){
+    sel.value=firstAvail;
+  }
   updateOpts();
 }
 function updateOpts(){
