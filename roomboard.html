@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<meta name="theme-color" content="#0F6E56"/>
+<title>빈방·방막기 한눈에</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+.app{max-width:900px;margin:0 auto;padding:1rem 1rem 6rem}
+@media(max-width:480px){.app{padding:.6rem .6rem 6rem}}
+
+/* ── 상단 ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.title{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.title small{display:block;font-size:11px;font-weight:500;color:#999;margin-top:1px;letter-spacing:0}
+.sync{font-size:10px;color:#bbb}
+.sync.ok{color:#2E9E5B}
+.sync.err{color:#E53935}
+
+/* ── 탭 ── */
+.tabs{display:flex;gap:8px;margin:.7rem 0}
+.tab{flex:1;padding:9px 8px;border-radius:12px;border:1px solid #e0e0e0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#888;white-space:nowrap;transition:.12s}
+.tab.act-a{background:#E1F5EE;color:#0F6E56;border-color:#5DCAA5}
+.tab.act-b{background:#EEEDFE;color:#534AB7;border-color:#AFA9EC}
+
+/* ── 방막기 경보 ── */
+.alert{border-radius:14px;margin-bottom:.9rem;overflow:hidden;border:1.5px solid #f3c0bd;background:#fff;box-shadow:0 2px 10px rgba(229,57,53,.08)}
+.alert-head{background:#FDECEA;padding:.7rem .9rem;display:flex;align-items:center;gap:8px}
+.alert-dot{width:9px;height:9px;border-radius:50%;background:#E53935;flex:none;animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(229,57,53,.5)}70%{box-shadow:0 0 0 7px rgba(229,57,53,0)}100%{box-shadow:0 0 0 0 rgba(229,57,53,0)}}
+.alert-title{font-size:13px;font-weight:700;color:#C62828}
+.alert-count{margin-left:auto;font-size:12px;font-weight:700;color:#fff;background:#E53935;border-radius:11px;padding:2px 9px}
+.alert-body{padding:.4rem .6rem .6rem}
+.pend{padding:.6rem .55rem;border-radius:10px;background:#fff;border:1px solid #f0e0df;margin-top:.45rem}
+.pend:first-child{margin-top:.15rem}
+.pend-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.5rem}
+.pend-pen{font-size:11px;font-weight:700;padding:2px 7px;border-radius:7px}
+.pen-a{background:#E1F5EE;color:#0F6E56}
+.pen-b{background:#EEEDFE;color:#534AB7}
+.pend-room{font-size:14px;font-weight:700}
+.pend-date{font-size:12px;color:#777}
+.pend-src{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600}
+.pend-ask{font-size:11px;color:#999;margin-bottom:.4rem}
+.blk-row{display:flex;gap:7px;flex-wrap:wrap}
+.blk{flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:10px;border:1.5px solid #e0a8a5;background:#fff;color:#C62828;font-size:13px;font-weight:700;cursor:pointer;transition:.12s}
+.blk .box{width:18px;height:18px;border-radius:5px;border:2px solid #d99;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;flex:none}
+.blk.done{border-color:#5DCAA5;background:#E1F5EE;color:#0F6E56}
+.blk.done .box{background:#2E9E5B;border-color:#2E9E5B}
+.alert-empty{padding:1.1rem;text-align:center;color:#2E9E5B;font-size:13px;font-weight:600}
+
+/* ── 월 네비 ── */
+.mnav{display:flex;align-items:center;justify-content:space-between;margin:.2rem 0 .7rem}
+.month{font-size:16px;font-weight:700}
+.mbtns{display:flex;gap:6px;align-items:center}
+.mb{width:34px;height:34px;border:1px solid #e0e0e0;border-radius:9px;background:#fff;cursor:pointer;font-size:17px;color:#666;display:flex;align-items:center;justify-content:center}
+.tdy{padding:0 13px;height:34px;border:1px solid #e0e0e0;border-radius:9px;background:#fff;font-size:12px;color:#666;cursor:pointer}
+
+/* ── 요약 ── */
+.sumrow{display:flex;gap:8px;margin-bottom:.7rem}
+.sumcard{flex:1;background:#fff;border-radius:11px;border:1px solid #eee;padding:.6rem .7rem;text-align:center}
+.sumcard .n{font-size:20px;font-weight:800;line-height:1}
+.sumcard .l{font-size:10.5px;color:#999;margin-top:3px}
+.sumcard.free .n{color:#2E9E5B}
+.sumcard.book .n{color:#E53935}
+.sumcard.date{cursor:default}
+.sumcard.date .n{font-size:15px;color:#444;font-weight:700}
+
+/* ── 매트릭스 ── */
+.gridwrap{background:#fff;border-radius:14px;border:1px solid #eee;padding:.6rem .55rem .7rem;overflow:hidden}
+.legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:.1rem .15rem .6rem;font-size:11px;color:#888}
+.legend b{font-weight:600;color:#555}
+.lg{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.lgchip{font-size:10px;font-weight:700;padding:1px 5px;border-radius:5px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#eaeaea;border:1px solid #eaeaea;border-radius:11px;overflow:hidden}
+.dow{background:#fafafa;text-align:center;font-size:10px;font-weight:700;color:#aaa;padding:5px 0}
+.dow.sun{color:#E53935}.dow.sat{color:#1976D2}
+.daycell{background:#fff;min-height:74px;padding:3px 3px 4px;cursor:pointer;display:flex;flex-direction:column}
+.daycell.other{background:#fafafa}
+.daycell.today{background:#FFFDE7}
+.dnum{font-size:10.5px;font-weight:700;color:#666;margin-bottom:2px;line-height:1;align-self:flex-start}
+.daycell.sun .dnum{color:#E53935}.daycell.sat .dnum{color:#1976D2}
+.daycell.other .dnum{color:#ccc}
+.daycell.today .dnum{background:#0F6E56;color:#fff;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center}
+.daycell.b.today .dnum{background:#534AB7}
+.chips{display:flex;flex-wrap:wrap;gap:2px;align-content:flex-start}
+.rchip{font-size:8.5px;font-weight:700;line-height:1.35;padding:0 3px;border-radius:4px;letter-spacing:-.02em}
+.rchip.free{background:#DCF2E4;color:#2E8B57}
+.rchip.book{background:#E53935;color:#fff}
+.daycell.other .rchip{opacity:.45}
+.dcount{font-size:8px;color:#bbb;margin-top:auto;text-align:right;padding-top:1px}
+.dcount b{color:#E53935}
+
+/* ── FAB ── */
+.fab{position:fixed;right:18px;bottom:22px;width:58px;height:58px;border-radius:50%;background:#0F6E56;color:#fff;border:none;font-size:30px;font-weight:300;box-shadow:0 5px 18px rgba(15,110,86,.4);cursor:pointer;z-index:50;display:flex;align-items:center;justify-content:center;line-height:1}
+.fab.b{background:#534AB7;box-shadow:0 5px 18px rgba(83,74,183,.4)}
+
+/* ── 모달 ── */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.mbg.open{display:flex}
+.modal{background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:1.1rem 1.1rem 1.6rem;animation:up .22s}
+@media(min-width:520px){.mbg{align-items:center}.modal{border-radius:18px}}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:translateY(0);opacity:1}}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.mh h3{font-size:16px;font-weight:700}
+.x{width:30px;height:30px;border:none;background:#f2f2f2;border-radius:50%;font-size:16px;color:#888;cursor:pointer}
+.fr{margin-bottom:.85rem}
+.fr label{display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:.35rem}
+.fr input,.fr select{width:100%;padding:11px 12px;border:1px solid #ddd;border-radius:10px;font-size:15px;background:#fff;font-family:inherit}
+.fr input:focus,.fr select:focus{outline:none;border-color:#0F6E56}
+.two{display:flex;gap:8px}.two>div{flex:1}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:9px 14px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;font-size:13px;font-weight:600;color:#888;cursor:pointer}
+.chip.on-naver{background:#E8F5E9;color:#1B5E20;border-color:#A5D6A7}
+.chip.on-yeogieo{background:#FFF3E0;color:#E65100;border-color:#FFCC80}
+.chip.on-ddenayo{background:#E3F2FD;color:#0D47A1;border-color:#90CAF9}
+.chip.on-phone{background:#F3E5F5;color:#6A1B9A;border-color:#CE93D8}
+.save{width:100%;padding:14px;border:none;border-radius:12px;background:#0F6E56;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:.4rem}
+.save.b{background:#534AB7}
+.ferr{font-size:11px;color:#E53935;margin-top:4px;display:none}
+.ferr.show{display:block}
+.hint{font-size:11px;color:#aaa;margin-top:3px}
+
+/* ── 셀 상세 ── */
+.detail{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:90;padding:1.5rem}
+.detail.open{display:flex}
+.dcard{background:#fff;border-radius:16px;width:100%;max-width:340px;padding:1.1rem;animation:up .2s}
+.dcard h4{font-size:15px;font-weight:700;margin-bottom:.7rem;display:flex;align-items:center;gap:7px}
+.drow{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f3f3;font-size:13px}
+.drow:last-of-type{border-bottom:none}
+.drow .k{color:#999}.drow .v{font-weight:600;color:#333}
+.rdot{width:9px;height:9px;border-radius:50%;flex:none}
+.rdot.free{background:#3FB873}.rdot.book{background:#E53935}
+.mini-add{font-size:11px;padding:5px 10px;border:1px solid #cfe0d8;border-radius:8px;background:#fff;color:#0F6E56;font-weight:700;cursor:pointer}
+.mini-add.b{color:#534AB7;border-color:#d7d3ee}
+.dbtns{display:flex;gap:8px;margin-top:.9rem}
+.dbtns button{flex:1;padding:11px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer}
+.db-close{background:#f2f2f2;color:#777}
+.db-add{background:#0F6E56;color:#fff}
+.db-add.b{background:#534AB7}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 20px;border-radius:22px;font-size:13px;font-weight:500;z-index:200;opacity:0;pointer-events:none;transition:.25s;white-space:nowrap;max-width:90vw}
+.toast.show{opacity:1;bottom:100px}
+
+/* ── 새 예약 모아보기 ── */
+.newbox{border-radius:14px;margin-bottom:.9rem;overflow:hidden;border:1.5px solid #bfe3d3;background:#fff;box-shadow:0 2px 10px rgba(15,110,86,.08)}
+.newbox-head{background:#E7F6EF;padding:.7rem .9rem;display:flex;align-items:center;gap:8px}
+.newbox-dot{width:9px;height:9px;border-radius:50%;background:#0F6E56;flex:none;animation:pulse2 1.6s infinite}
+@keyframes pulse2{0%{box-shadow:0 0 0 0 rgba(15,110,86,.45)}70%{box-shadow:0 0 0 7px rgba(15,110,86,0)}100%{box-shadow:0 0 0 0 rgba(15,110,86,0)}}
+.newbox-title{font-size:13px;font-weight:700;color:#0F6E56}
+.newbox-count{margin-left:auto;font-size:12px;font-weight:700;color:#fff;background:#0F6E56;border-radius:11px;padding:2px 9px}
+.newbox-body{padding:.4rem .6rem .2rem}
+.nrow{padding:.55rem .55rem;border-radius:10px;background:#fff;border:1px solid #e6efe9;margin-top:.4rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nrow:first-child{margin-top:.15rem}
+.nrow-pen{font-size:11px;font-weight:700;padding:2px 7px;border-radius:7px;flex:none}
+.nrow-room{font-size:14px;font-weight:700}
+.nrow-date{font-size:12px;color:#777}
+.nrow-src{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;background:#f0f0f0;color:#666;flex:none}
+.nrow-need{width:100%;font-size:10.5px;color:#C62828;font-weight:700;margin-top:2px}
+.nrow-ok{width:100%;font-size:10.5px;color:#2E9E5B;font-weight:700;margin-top:2px}
+.newbox-foot{padding:.55rem .6rem .7rem;text-align:center}
+.newbox-clear{padding:10px 20px;border:1px solid #bfe3d3;border-radius:10px;background:#fff;color:#0F6E56;font-size:13px;font-weight:700;cursor:pointer}
+
+/* ── 방 풀기(예약취소) 경보 ── */
+.relbox{border-radius:14px;margin-bottom:.9rem;overflow:hidden;border:1.5px solid #f3d9b0;background:#fff;box-shadow:0 2px 10px rgba(230,140,20,.08)}
+.relbox-head{background:#FFF4E2;padding:.7rem .9rem;display:flex;align-items:center;gap:8px}
+.relbox-dot{width:9px;height:9px;border-radius:50%;background:#E8890C;flex:none;animation:pulse3 1.5s infinite}
+@keyframes pulse3{0%{box-shadow:0 0 0 0 rgba(232,137,12,.5)}70%{box-shadow:0 0 0 7px rgba(232,137,12,0)}100%{box-shadow:0 0 0 0 rgba(232,137,12,0)}}
+.relbox-title{font-size:13px;font-weight:700;color:#B5650A}
+.relbox-count{margin-left:auto;font-size:12px;font-weight:700;color:#fff;background:#E8890C;border-radius:11px;padding:2px 9px}
+.relbox-body{padding:.4rem .6rem .6rem}
+.rel{padding:.6rem .55rem;border-radius:10px;background:#fff;border:1px solid #f0e3cf;margin-top:.45rem}
+.rel:first-child{margin-top:.15rem}
+.rel-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.45rem}
+.rel-pen{font-size:11px;font-weight:700;padding:2px 7px;border-radius:7px;flex:none}
+.rel-room{font-size:14px;font-weight:700}
+.rel-date{font-size:12px;color:#777}
+.rel-tag{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:8px;font-weight:700;background:#FBE3C2;color:#B5650A;flex:none}
+.rel-ask{font-size:11px;color:#999;margin-bottom:.4rem}
+.rel-btn{flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:10px;border:1.5px solid #e7b878;background:#fff;color:#B5650A;font-size:13px;font-weight:700;cursor:pointer;transition:.12s}
+.rel-btn .box{width:18px;height:18px;border-radius:5px;border:2px solid #d9b27a;flex:none}
+.setup{background:#FFF8E1;border:1px solid #FFE082;border-radius:12px;padding:.8rem .9rem;margin-bottom:.9rem;font-size:12px;color:#8a6d00;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="title">빈방·방막기 한눈에<small>스테이 유 풀빌라 · 스테이 느긋하게</small></div>
+    <div class="sync" id="sync">연결 중…</div>
+  </div>
+
+  <div id="setupNote"></div>
+
+  <div class="tabs">
+    <button class="tab act-a" id="tabA" onclick="switchP('A')">🏊 스테이 유 풀빌라</button>
+    <button class="tab" id="tabB" onclick="switchP('B')">🌿 스테이 느긋하게</button>
+  </div>
+
+  <!-- 새 예약 모아보기 -->
+  <div class="newbox" id="newBox" style="display:none">
+    <div class="newbox-head">
+      <span class="newbox-dot"></span>
+      <span class="newbox-title">📥 새로 들어온 예약 — 마지막 확인 이후</span>
+      <span class="newbox-count" id="newCount">0</span>
+    </div>
+    <div class="newbox-body" id="newList"></div>
+    <div class="newbox-foot"><button class="newbox-clear" onclick="clearNew()">모두 확인했어요</button></div>
+  </div>
+
+  <!-- 방막기 경보 -->
+  <div class="alert" id="alertBox" style="display:none">
+    <div class="alert-head">
+      <span class="alert-dot"></span>
+      <span class="alert-title">방막기 필요 — 다른 채널 막으세요</span>
+      <span class="alert-count" id="alertCount">0</span>
+    </div>
+    <div class="alert-body" id="pendList"></div>
+  </div>
+
+  <!-- 방 풀기(예약취소) 경보 -->
+  <div class="relbox" id="relBox" style="display:none">
+    <div class="relbox-head">
+      <span class="relbox-dot"></span>
+      <span class="relbox-title">방 풀기 필요 — 취소된 예약, 막아둔 방 여세요</span>
+      <span class="relbox-count" id="relCount">0</span>
+    </div>
+    <div class="relbox-body" id="relList"></div>
+  </div>
+
+  <!-- 월 네비 -->
+  <div class="mnav">
+    <div class="month" id="monthLabel"></div>
+    <div class="mbtns">
+      <button class="mb" onclick="chMonth(-1)">‹</button>
+      <button class="tdy" onclick="goToday()">오늘</button>
+      <button class="mb" onclick="chMonth(1)">›</button>
+    </div>
+  </div>
+
+  <!-- 요약 -->
+  <div class="sumrow">
+    <div class="sumcard date"><div class="n" id="sumDateN">오늘</div><div class="l" id="sumDateL"></div></div>
+    <div class="sumcard free"><div class="n" id="sumFree">0</div><div class="l">빈 객실</div></div>
+    <div class="sumcard book"><div class="n" id="sumBook">0</div><div class="l">예약된 객실</div></div>
+  </div>
+
+  <!-- 매트릭스 -->
+  <div class="gridwrap">
+    <div class="legend">
+      <span class="lg"><span class="lgchip free">101</span><b>빈방</b></span>
+      <span class="lg"><span class="lgchip book">101</span><b>예약됨</b></span>
+      <span class="lg" style="color:#aaa">날짜를 누르면 상세보기</span>
+    </div>
+    <div id="grid"></div>
+  </div>
+</div>
+
+<button class="fab" id="fab" onclick="openAdd()">+</button>
+
+<!-- 예약 추가 모달 -->
+<div class="mbg" id="addBg">
+  <div class="modal">
+    <div class="mh"><h3 id="addTitle">예약 추가</h3><button class="x" onclick="closeAdd()">✕</button></div>
+    <div class="fr">
+      <label>펜션</label>
+      <select id="aPension" onchange="fillRooms()">
+        <option value="A">🏊 스테이 유 풀빌라</option>
+        <option value="B">🌿 스테이 느긋하게</option>
+      </select>
+    </div>
+    <div class="fr">
+      <label>객실</label>
+      <select id="aRoom"></select>
+      <div class="ferr" id="errRoom">객실을 선택해 주세요.</div>
+    </div>
+    <div class="two">
+      <div class="fr"><label>체크인</label><input type="date" id="aIn"/></div>
+      <div class="fr"><label>체크아웃</label><input type="date" id="aOut"/></div>
+    </div>
+    <div class="ferr" id="errDate" style="margin-top:-.5rem;margin-bottom:.6rem">체크아웃은 체크인보다 뒤여야 합니다.</div>
+    <div class="fr">
+      <label>예약 경로 <span style="color:#E53935">*</span> <span style="color:#aaa;font-weight:400">— 어디서 예약됐는지</span></label>
+      <div class="chips" id="chChips">
+        <button type="button" class="chip" data-ch="네이버" onclick="pickCh('네이버')">네이버</button>
+        <button type="button" class="chip" data-ch="여기어때" onclick="pickCh('여기어때')">여기어때</button>
+        <button type="button" class="chip" data-ch="떠나요" onclick="pickCh('떠나요')">떠나요</button>
+        <button type="button" class="chip" data-ch="전화예약" onclick="pickCh('전화예약')">전화예약</button>
+      </div>
+      <div class="ferr" id="errCh">예약 경로를 선택해 주세요.</div>
+    </div>
+    <div class="two">
+      <div class="fr"><label>예약자 <span style="color:#aaa;font-weight:400">(선택)</span></label><input type="text" id="aName" placeholder="이름"/></div>
+      <div class="fr"><label>금액 <span style="color:#aaa;font-weight:400">(선택)</span></label><input type="text" id="aAmount" inputmode="numeric" placeholder="0"/></div>
+    </div>
+    <div class="hint" id="addHint">저장하면 기존 예약관리 앱에도 같이 나타납니다. 금액·옵션 등 상세는 그쪽에서 채우셔도 됩니다.</div>
+    <button class="save" id="addSave" onclick="saveAdd()">저장하고 방막기 체크 시작</button>
+  </div>
+</div>
+
+<!-- 셀 상세 -->
+<div class="detail" id="detailBg" onclick="if(event.target===this)closeDetail()">
+  <div class="dcard" id="dcard"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot, addDoc, setDoc, deleteDoc, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+/* ───────── 기존 앱과 동일한 Firebase ───────── */
+const firebaseConfig = {
+  apiKey: "AIzaSyClX8eRlHKKTsakkGbUKYDbd86CjEBs-wA",
+  authDomain: "stay-you-booking.firebaseapp.com",
+  projectId: "stay-you-booking",
+  storageBucket: "stay-you-booking.firebasestorage.app",
+  messagingSenderId: "732264305888",
+  appId: "1:732264305888:web:ed8bad4000da156bcf2c85"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.fbAddBooking = (data)=> addDoc(collection(db,'bookings'), data);
+window.fbSetBlock = (id,data)=> setDoc(doc(db,'blockChecks',id), data, {merge:true});
+window.fbDelBlock = (id)=> deleteDoc(doc(db,'blockChecks',id));
+
+/* 예약 실시간 */
+onSnapshot(collection(db,'bookings'), (snap)=>{
+  bookings = snap.docs.map(d=>{ const x=d.data(); x.id=d.id; return x; });
+  setSync('ok');
+  renderAll();
+}, (err)=>{ console.error(err); setSync('err'); });
+
+/* 방막기 체크 실시간 */
+onSnapshot(collection(db,'blockChecks'), (snap)=>{
+  blockMap = {};
+  snap.docs.forEach(d=>{ blockMap[d.id] = d.data(); });
+  renderAll();
+}, (err)=>{ console.error('blockChecks',err); });
+
+/* 추적 시작 시점 (이 시점 이전 예약은 방막기 완료로 간주) */
+(async ()=>{
+  try{
+    const ref = doc(db,'app_meta','avail_tracking');
+    const s = await getDoc(ref);
+    if(s.exists() && s.data().trackStart){ trackStart = s.data().trackStart; }
+    else { trackStart = Date.now(); await setDoc(ref,{trackStart}); }
+  }catch(e){ trackStart = Number(localStorage.getItem('rb_trackStart')||Date.now()); }
+  localStorage.setItem('rb_trackStart', String(trackStart));
+  renderAll();
+})();
+</script>
+
+<script>
+/* ───────── 상태 ───────── */
+var bookings = [];
+var blockMap = {};
+var trackStart = Number(localStorage.getItem('rb_trackStart')||0);
+/* 새 예약 모아보기: 이 기기에서 마지막으로 '확인'한 시각 */
+var lastSeen = Number(localStorage.getItem('rb_lastSeen')||0);
+if(!lastSeen){ lastSeen = Date.now(); localStorage.setItem('rb_lastSeen', String(lastSeen)); }
+var myAddedIds = {};  /* 이 기기에서 방금 추가한 예약 (새 예약 목록에서 제외) */
+var curP = 'A';
+var cur = new Date(); cur.setDate(1);
+var selDate = null;
+
+var OTA = ['네이버','여기어때','떠나요'];
+var CH_KEY = {'네이버':'naver','여기어때':'yeogieo','떠나요':'ddenayo','전화예약':'phone'};
+var DAYS = ['일','월','화','수','목','금','토'];
+
+/* 객실 구성 (기존 앱과 동일) */
+var ROOMS_A = [
+  {grp:'본관', rooms:['101','102','201','202','301','302','401'], key:function(r){return '본관-'+r}},
+  {grp:'별관', rooms:['1A','1B','2A','2B','2C','2D'], key:function(r){return '별관-'+r}}
+];
+var ROOMS_B = ['스테이 1','스테이 2','스테이 3','스테이 4','스테이 독채 2층'];
+
+/* ───────── 유틸 ───────── */
+function pad(n){return n<10?'0'+n:''+n}
+function dk(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function pd(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function todayStr(){return dk(new Date())}
+function setSync(s){var e=document.getElementById('sync');if(!e)return;
+  if(s==='ok'){e.textContent='● 실시간 연결됨';e.className='sync ok';}
+  else if(s==='err'){e.textContent='● 연결 오류';e.className='sync err';}}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2200);}
+
+/* 해당 펜션의 매트릭스 행(실제 객실) 목록 */
+function matrixRooms(p){
+  if(p==='A'){
+    var out=[];
+    ROOMS_A.forEach(function(g){ g.rooms.forEach(function(r){ out.push({grp:g.grp,label:r,short:r,val:g.key(r)}); }); });
+    return out;
+  }
+  return ROOMS_B.map(function(r){
+    var sh = r==='스테이 독채 2층' ? '독채' : r.replace('스테이 ','스');
+    return {grp:'',label:r,short:sh,val:r};
+  });
+}
+
+/* 특정 객실값이 특정 날짜에 예약됐는지 → 예약객체 또는 null */
+function bookingFor(p, roomVal, ds){
+  for(var i=0;i<bookings.length;i++){
+    var b=bookings[i];
+    if(b.pension!==p) continue;
+    if(!b.checkIn||!b.checkOut) continue;
+    if(!(b.checkIn<=ds && ds<b.checkOut)) continue;
+    // 직접 매칭
+    if(b.room===roomVal) return b;
+    // 전체대관 / 별관전체 블로킹
+    if(p==='A' && roomVal.indexOf('별관-')===0 && b.room==='별관-별관 전체') return b;
+    if(p==='B' && b.room==='전체대관') return b;
+  }
+  return null;
+}
+
+/* 예약의 방막기 대상 채널 (예약 경로 제외한 나머지 OTA) */
+function targetsOf(b){
+  var ch=b.channel||'';
+  if(OTA.indexOf(ch)>=0) return OTA.filter(function(c){return c!==ch});
+  return OTA.slice(); // 전화예약·빈값 → 3개 OTA 전부
+}
+/* 추적 대상인가 (옛 예약 제외) */
+function isTracked(b){
+  if(blockMap[b.id]) return true;
+  if(b.createdAt && b.createdAt>=trackStart) return true;
+  return false;
+}
+function blockDone(b, ch){
+  var bm=blockMap[b.id];
+  return !!(bm && bm.status && bm.status[ch]);
+}
+/* 방막기 미완료 예약 (오늘 이후 체크아웃) */
+function pendingBlocks(){
+  var t=todayStr();
+  return bookings.filter(function(b){
+    if(!b.checkOut || b.checkOut<=t) return false;          // 지난 예약 제외
+    if(!isTracked(b)) return false;
+    var tg=targetsOf(b);
+    return tg.some(function(ch){return !blockDone(b,ch)});
+  }).sort(function(a,c){return (a.checkIn||'').localeCompare(c.checkIn||'')});
+}
+
+/* ───────── 렌더 ───────── */
+function renderAll(){ renderNew(); renderAlert(); renderRelease(); renderGrid(); renderSummary(); }
+
+function switchP(p){
+  curP=p;
+  document.getElementById('tabA').className='tab'+(p==='A'?' act-a':'');
+  document.getElementById('tabB').className='tab'+(p==='B'?' act-b':'');
+  document.getElementById('fab').className='fab'+(p==='B'?' b':'');
+  renderAll();
+}
+function chMonth(d){ selDate=null; cur=new Date(cur.getFullYear(),cur.getMonth()+d,1); renderAll(); }
+function goToday(){ selDate=todayStr(); cur=new Date(); cur.setDate(1); renderAll(); }
+
+/* ── 새 예약 모아보기 ── */
+function newBookings(){
+  return bookings.filter(function(b){
+    if(!b.createdAt || b.createdAt<=lastSeen) return false;   // 마지막 확인 이후 것만
+    if(myAddedIds[b.id]) return false;                        // 내가 방금 넣은 건 제외
+    return true;
+  }).sort(function(a,c){ return (c.createdAt||0)-(a.createdAt||0); }); // 최신순
+}
+function renderNew(){
+  var box=document.getElementById('newBox');
+  var list=newBookings();
+  document.getElementById('newCount').textContent=list.length;
+  if(list.length===0){ box.style.display='none'; return; }
+  box.style.display='block';
+  var t=todayStr(), h='';
+  list.forEach(function(b){
+    var penCls=b.pension==='A'?'pen-a':'pen-b';
+    var penName=b.pension==='A'?'유 풀빌라':'느긋하게';
+    var room=b.room?(b.room.indexOf('-')>=0?b.room.split('-').pop():b.room):'';
+    var dateTxt=(b.checkIn&&b.checkOut)?(b.checkIn.slice(5)+'~'+b.checkOut.slice(5)):'';
+    var srcTxt=b.channel||'경로미입력';
+    h+='<div class="nrow">';
+    h+='<span class="nrow-pen '+penCls+'">'+penName+'</span>';
+    h+='<span class="nrow-room">'+room+'</span>';
+    h+='<span class="nrow-date">'+dateTxt+(b.name?' · '+b.name:'')+'</span>';
+    h+='<span class="nrow-src">'+srcTxt+'</span>';
+    // 방막기 안내 (지난 예약은 생략)
+    if(b.checkOut && b.checkOut>t){
+      var tg=targetsOf(b);
+      if(tg.length) h+='<span class="nrow-need">→ '+tg.join(' · ')+' 막아야 함</span>';
+      else h+='<span class="nrow-ok">→ 방막기 불필요</span>';
+    }
+    h+='</div>';
+  });
+  document.getElementById('newList').innerHTML=h;
+}
+window.clearNew=function(){
+  lastSeen=Date.now();
+  localStorage.setItem('rb_lastSeen', String(lastSeen));
+  renderNew();
+  toast('확인 완료 — 다음에 열면 이후 예약만 모아 보여드려요');
+}
+
+/* ── 방 풀기(예약취소) ── */
+/* blockChecks 기록은 있는데 해당 예약이 더이상 없음(=취소·삭제) + 실제로 막아둔(true) 채널 존재 */
+function releaseNeeded(){
+  var t=todayStr(), out=[];
+  Object.keys(blockMap).forEach(function(id){
+    var bc=blockMap[id]; if(!bc||!bc.status) return;
+    if(bookings.some(function(b){return b.id===id})) return;   // 예약이 살아있으면 제외
+    if(!bc.checkOut || bc.checkOut<=t) return;                 // 지난 날짜는 풀 필요 없음
+    var blocked=Object.keys(bc.status).filter(function(ch){return bc.status[ch]});
+    if(blocked.length===0) return;                             // 막아둔 채널이 있어야
+    out.push({id:id, bc:bc, blocked:blocked});
+  });
+  return out.sort(function(a,c){return (a.bc.checkIn||'').localeCompare(c.bc.checkIn||'')});
+}
+function renderRelease(){
+  var box=document.getElementById('relBox');
+  var list=releaseNeeded();
+  document.getElementById('relCount').textContent=list.length;
+  if(list.length===0){ box.style.display='none'; return; }
+  box.style.display='block';
+  var h='';
+  list.forEach(function(it){
+    var bc=it.bc;
+    var penCls=bc.pension==='A'?'pen-a':'pen-b';
+    var penName=bc.pension==='A'?'유 풀빌라':'느긋하게';
+    var room=bc.room?(bc.room.indexOf('-')>=0?bc.room.split('-').pop():bc.room):'';
+    var dateTxt=(bc.checkIn&&bc.checkOut)?(bc.checkIn.slice(5)+'~'+bc.checkOut.slice(5)):'';
+    h+='<div class="rel">';
+    h+='<div class="rel-top"><span class="rel-pen '+penCls+'">'+penName+'</span>';
+    h+='<span class="rel-room">'+room+'</span>';
+    h+='<span class="rel-date">'+dateTxt+(bc.name?' · '+bc.name:'')+'</span>';
+    h+='<span class="rel-tag">예약취소</span></div>';
+    h+='<div class="rel-ask">취소된 예약이에요. 아래 채널에서 막아둔 방을 다시 여세요</div>';
+    h+='<div class="blk-row">';
+    it.blocked.forEach(function(ch){
+      h+='<button class="rel-btn" onclick="toggleRelease(\''+it.id+'\',\''+ch+'\')">';
+      h+='<span class="box"></span>'+ch+' 풀기</button>';
+    });
+    h+='</div></div>';
+  });
+  document.getElementById('relList').innerHTML=h;
+}
+window.toggleRelease=function(id,ch){
+  var bc=blockMap[id]; if(!bc||!bc.status) return;
+  var st=Object.assign({},bc.status);
+  st[ch]=false;   // 다시 열었으니 막기 해제
+  var remaining=Object.keys(st).filter(function(c){return st[c]});
+  if(remaining.length===0){
+    delete blockMap[id];
+    if(window.fbDelBlock) window.fbDelBlock(id);   // 다 풀면 기록 삭제
+    toast('✅ 방 풀기 완료 — 모두 다시 열렸습니다');
+  } else {
+    blockMap[id]=Object.assign({},bc,{status:st,updatedAt:Date.now()});
+    if(window.fbSetBlock) window.fbSetBlock(id,{status:st,updatedAt:Date.now()});
+  }
+  renderRelease();
+}
+
+function renderAlert(){
+  var box=document.getElementById('alertBox');
+  var pend=pendingBlocks();
+  document.getElementById('alertCount').textContent=pend.length;
+  if(pend.length===0){ box.style.display='none'; return; }
+  box.style.display='block';
+  var h='';
+  pend.forEach(function(b){
+    var penCls=b.pension==='A'?'pen-a':'pen-b';
+    var penName=b.pension==='A'?'유 풀빌라':'느긋하게';
+    var room=b.room?(b.room.indexOf('-')>=0?b.room.split('-').pop():b.room):'';
+    var nights=Math.round((pd(b.checkOut)-pd(b.checkIn))/86400000);
+    var srcCls='ch-'+(CH_KEY[b.channel]||'phone');
+    var srcTxt=b.channel||'경로미입력';
+    h+='<div class="pend">';
+    h+='<div class="pend-top"><span class="pend-pen '+penCls+'">'+penName+'</span>';
+    h+='<span class="pend-room">'+room+'</span>';
+    h+='<span class="pend-date">'+b.checkIn.slice(5)+'~'+b.checkOut.slice(5)+' ('+nights+'박)'+(b.name?' · '+b.name:'')+'</span>';
+    h+='<span class="pend-src '+chTagCls(b.channel)+'">'+srcTxt+'</span></div>';
+    h+='<div class="pend-ask">아래 채널에서 같은 객실·날짜를 막으셨으면 체크하세요</div>';
+    h+='<div class="blk-row">';
+    targetsOf(b).forEach(function(ch){
+      var done=blockDone(b,ch);
+      h+='<button class="blk'+(done?' done':'')+'" onclick="toggleBlock(\''+b.id+'\',\''+ch+'\')">';
+      h+='<span class="box">'+(done?'✓':'')+'</span>'+ch+(done?' 막음':' 막기')+'</button>';
+    });
+    h+='</div></div>';
+  });
+  document.getElementById('pendList').innerHTML=h;
+}
+function chTagCls(ch){
+  return {'네이버':'pend-src','여기어때':'pend-src','떠나요':'pend-src','전화예약':'pend-src'}[ch]?('ch-'+(CH_KEY[ch]||'phone')):'ch-phone';
+}
+
+window.toggleBlock=function(id,ch){
+  var b=bookings.find(function(x){return x.id===id}); if(!b)return;
+  var cur=(blockMap[id]&&blockMap[id].status)?Object.assign({},blockMap[id].status):{};
+  cur[ch]=!cur[ch];
+  blockMap[id]=Object.assign({},blockMap[id],{status:cur,updatedAt:Date.now()});
+  renderAlert();
+  if(window.fbSetBlock){
+    window.fbSetBlock(id,{status:cur,updatedAt:Date.now(),
+      pension:b.pension,room:b.room||'',channel:b.channel||'',name:b.name||'',
+      checkIn:b.checkIn||'',checkOut:b.checkOut||''});
+  }
+  var tg=targetsOf(b);
+  if(tg.every(function(c){return cur[c]})) toast('✅ 방막기 완료 — 더블부킹 걱정 끝!');
+}
+
+function daysInMonth(){ return new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate(); }
+
+function renderGrid(){
+  document.getElementById('monthLabel').textContent=cur.getFullYear()+'년 '+(cur.getMonth()+1)+'월';
+  var y=cur.getFullYear(),m=cur.getMonth(),nd=daysInMonth(),tStr=todayStr();
+  var rooms=matrixRooms(curP), penB=(curP==='B');
+  var startDow=new Date(y,m,1).getDay();
+  var totalCells=Math.ceil((startDow+nd)/7)*7;
+  var html='<div class="cal">';
+  ['일','월','화','수','목','금','토'].forEach(function(d,i){
+    html+='<div class="dow'+(i===0?' sun':i===6?' sat':'')+'">'+d+'</div>';
+  });
+  for(var i=0;i<totalCells;i++){
+    var dayNum=i-startDow+1;
+    var inMonth=(dayNum>=1 && dayNum<=nd);
+    var dt=new Date(y,m,dayNum), ds=dk(dt), dow=dt.getDay();
+    var cls='daycell'+(penB?' b':'')+(inMonth?'':' other')+(ds===tStr?' today':'')+(dow===0?' sun':dow===6?' sat':'');
+    html+='<div class="'+cls+'" onclick="dayTap(\''+ds+'\')">';
+    html+='<span class="dnum">'+dt.getDate()+'</span>';
+    if(inMonth){
+      var chips='', bookCount=0;
+      rooms.forEach(function(rm){
+        var booked=!!bookingFor(curP,rm.val,ds);
+        if(booked) bookCount++;
+        chips+='<span class="rchip '+(booked?'book':'free')+'">'+rm.short+'</span>';
+      });
+      html+='<div class="chips">'+chips+'</div>';
+      if(bookCount>0) html+='<div class="dcount"><b>'+bookCount+'</b> / '+rooms.length+'</div>';
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  document.getElementById('grid').innerHTML=html;
+}
+
+function renderSummary(){
+  var ds=selDate||todayStr();
+  var d=pd(ds);
+  document.getElementById('sumDateN').textContent=(d.getMonth()+1)+'/'+d.getDate();
+  document.getElementById('sumDateL').textContent=ds===todayStr()?'오늘':DAYS[d.getDay()]+'요일';
+  var rooms=matrixRooms(curP);
+  var book=0;
+  rooms.forEach(function(rm){ if(bookingFor(curP,rm.val,ds)) book++; });
+  document.getElementById('sumFree').textContent=rooms.length-book;
+  document.getElementById('sumBook').textContent=book;
+}
+
+/* ───────── 날짜 상세 (그 날 호실별 현황) ───────── */
+window.dayTap=function(ds){
+  selDate=ds; renderSummary();
+  var d=pd(ds);
+  var penName=curP==='A'?'스테이 유 풀빌라':'스테이 느긋하게';
+  var rooms=matrixRooms(curP);
+  var book=0; rooms.forEach(function(rm){ if(bookingFor(curP,rm.val,ds)) book++; });
+  var h='<h4>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DAYS[d.getDay()]+') · '+penName+'</h4>';
+  h+='<div style="font-size:12px;color:#888;margin-bottom:.5rem">🟢 빈방 '+(rooms.length-book)+' · 🔴 예약 '+book+'</div>';
+  h+='<div style="max-height:46vh;overflow:auto">';
+  var lastGrp=null;
+  rooms.forEach(function(rm){
+    if(rm.grp && rm.grp!==lastGrp){ lastGrp=rm.grp;
+      h+='<div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:.04em;margin:.5rem 0 .15rem">'+rm.grp+'</div>'; }
+    var b=bookingFor(curP,rm.val,ds);
+    h+='<div class="drow" style="align-items:center">';
+    h+='<span class="k" style="display:flex;align-items:center;gap:8px;color:#444;font-weight:600"><span class="rdot '+(b?'book':'free')+'"></span>'+rm.label+'</span>';
+    if(b){
+      var whole=(b.room==='별관-별관 전체'||b.room==='전체대관');
+      var info=(b.channel||'경로미입력')+(b.name?' · '+b.name:'')+' · ~'+b.checkOut.slice(5)+(whole?' (전체)':'');
+      h+='<span class="v" style="color:#C62828;font-weight:600">'+info+'</span>';
+    } else {
+      h+='<button class="mini-add'+(curP==='B'?' b':'')+'" onclick="closeDetail();openAdd(\''+rm.val+'\',\''+ds+'\')">+ 예약</button>';
+    }
+    h+='</div>';
+  });
+  h+='</div><div class="dbtns"><button class="db-close" onclick="closeDetail()">닫기</button>';
+  h+='<button class="db-add'+(curP==='B'?' b':'')+'" onclick="closeDetail();openAdd(null,\''+ds+'\')">+ 예약 추가</button></div>';
+  document.getElementById('dcard').innerHTML=h;
+  document.getElementById('detailBg').classList.add('open');
+}
+window.closeDetail=function(){ document.getElementById('detailBg').classList.remove('open'); }
+
+/* ───────── 예약 추가 ───────── */
+var addCh=null;
+window.openAdd=function(roomVal,ds){
+  document.getElementById('aPension').value=curP;
+  fillRooms();
+  if(roomVal) document.getElementById('aRoom').value=roomVal;
+  var inDate=ds||todayStr();
+  var out=dk(new Date(pd(inDate).getTime()+86400000));
+  document.getElementById('aIn').value=inDate;
+  document.getElementById('aOut').value=out;
+  addCh=null;
+  document.querySelectorAll('#chChips .chip').forEach(function(c){c.className='chip'});
+  document.getElementById('aName').value='';
+  document.getElementById('aAmount').value='';
+  ['errRoom','errDate','errCh'].forEach(function(id){document.getElementById(id).classList.remove('show')});
+  document.getElementById('addSave').className='save'+(curP==='B'?' b':'');
+  document.getElementById('addBg').classList.add('open');
+}
+window.closeAdd=function(){ document.getElementById('addBg').classList.remove('open'); }
+window.fillRooms=function(){
+  var p=document.getElementById('aPension').value;
+  var sel=document.getElementById('aRoom'); sel.innerHTML='';
+  if(p==='A'){
+    ROOMS_A.forEach(function(g){
+      var og=document.createElement('optgroup'); og.label=g.grp;
+      g.rooms.forEach(function(r){ var o=document.createElement('option'); o.value=g.key(r); o.textContent=r; og.appendChild(o); });
+      sel.appendChild(og);
+    });
+    var oga=document.createElement('optgroup'); oga.label='전체';
+    var oa=document.createElement('option'); oa.value='별관-별관 전체'; oa.textContent='별관 전체'; oga.appendChild(oa);
+    sel.appendChild(oga);
+  } else {
+    ROOMS_B.forEach(function(r){ var o=document.createElement('option'); o.value=r; o.textContent=r; sel.appendChild(o); });
+    var o2=document.createElement('option'); o2.value='전체대관'; o2.textContent='전체대관'; sel.appendChild(o2);
+  }
+}
+window.pickCh=function(ch){
+  addCh=ch;
+  document.querySelectorAll('#chChips .chip').forEach(function(c){
+    c.className='chip'+(c.dataset.ch===ch?(' on-'+(CH_KEY[ch]||'phone')):'');
+  });
+  document.getElementById('errCh').classList.remove('show');
+}
+window.saveAdd=function(){
+  var p=document.getElementById('aPension').value;
+  var room=document.getElementById('aRoom').value;
+  var ci=document.getElementById('aIn').value, co=document.getElementById('aOut').value;
+  var name=document.getElementById('aName').value.trim();
+  var amount=parseInt((document.getElementById('aAmount').value||'').replace(/[^0-9]/g,''))||0;
+  var err=false;
+  if(!room){document.getElementById('errRoom').classList.add('show');err=true;}
+  if(!ci||!co||ci>=co){document.getElementById('errDate').classList.add('show');err=true;}
+  if(!addCh){document.getElementById('errCh').classList.add('show');err=true;}
+  if(err)return;
+  var data={pension:p,room:room,checkIn:ci,checkOut:co,channel:addCh,
+    name:name,amount:amount,people:null,phone:'',optionFee:0,payMethod:'card',
+    paid:false,options:[],memo:'',createdAt:Date.now()};
+  if(window.fbAddBooking){
+    window.fbAddBooking(data).then(function(ref){
+      if(ref&&ref.id){
+        myAddedIds[ref.id]=true;   // 내가 넣은 건 '새 예약'에서 제외
+        var st={}; targetsOf({channel:addCh}).forEach(function(c){st[c]=false});
+        window.fbSetBlock(ref.id,{status:st,updatedAt:Date.now(),
+          pension:p,room:room,channel:addCh,name:name,checkIn:ci,checkOut:co});
+        renderNew();
+      }
+    });
+  }
+  closeAdd();
+  toast('저장됨 — 방막기 체크를 진행하세요');
+}
+
+/* 초기 */
+goToday();
+switchP('A');
+</script>
+</body>
+</html>
