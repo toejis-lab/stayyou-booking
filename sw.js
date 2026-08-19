@@ -3,7 +3,7 @@
          인터넷이 끊겨도 앱이 최소한 열리도록 마지막 페이지를 보관.
    주의: 항상 '네트워크 우선'이라, 기존 APP_VERSION 자동 업데이트를 방해하지 않음.
          Firebase 등 외부 요청은 건드리지 않고 그대로 통과시킴. */
-const CACHE = 'stayyou-booking-shell-v2';
+const CACHE = 'stayyou-booking-shell-v3';
 const SHELL = './';
 
 self.addEventListener('install', (e) => {
