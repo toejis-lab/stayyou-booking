@@ -4811,6 +4811,24 @@ function renderStats(){
   });
   h+='</div>';
 
+  // 📍 [2026-10-29] 처음 알게 된 곳 현황 (광고 효과 검증용)
+  var srcData={}, srcNone=0;
+  SOURCES.forEach(function(s){srcData[s]=0;});
+  allYear.forEach(function(b){ if(b.source&&srcData[b.source]!==undefined) srcData[b.source]++; else srcNone++; });
+  var srcFilled=allYear.length-srcNone;
+  var srcRate=Math.round(srcFilled/Math.max(allYear.length,1)*100);
+  h+='<div class="chart-section">';
+  h+='<div class="chart-section-title">📍 처음 알게 된 곳 현황<span style="font-size:11px;font-weight:400;color:#aaa;">입력 '+srcFilled+'건 / 전체 '+allYear.length+'건 ('+srcRate+'%)</span></div>';
+  var maxSrc=Math.max.apply(null,SOURCES.map(function(s){return srcData[s]}))||1;
+  var srcColors={'네이버 검색':'#4CAF50','인스타':'#E1306C','유튜브':'#E53935','지인 소개':'#9C27B0','재방문':'#1D9E75','모름':'#9E9E9E'};
+  SOURCES.forEach(function(s){
+    var cnt=srcData[s];
+    var pct=Math.round(cnt/Math.max(srcFilled,1)*100);
+    h+='<div class="ch-bar-row"><span class="ch-bar-label" style="width:66px;">'+s+'</span><div class="ch-bar-bg"><div class="ch-bar-fill" style="width:'+(cnt/maxSrc*100)+'%;background:'+srcColors[s]+';"></div></div><span class="ch-bar-val">'+cnt+'건 <span style="font-size:10px;color:#aaa;">'+pct+'%</span></span></div>';
+  });
+  h+='<div style="font-size:11px;color:#aaa;margin-top:6px;line-height:1.6;">비율은 입력된 예약 기준입니다. 미입력 '+srcNone+'건은 비율에서 빠집니다.</div>';
+  h+='</div>';
+
   // 월별 예약 건수 도넛
   h+='<div class="chart-section">';
   h+='<div class="chart-section-title">월별 예약 건수</div>';
@@ -5242,9 +5260,12 @@ document.addEventListener('visibilitychange', function(){
 //   - 로컬 파일(file://)에서는 자동 새로고침 비활성화
 //   - 직전 새로고침 시각이 10초 이내면 차단 (loop guard)
 //   - 새로고침 누적 횟수가 짧은 시간 안에 3회 초과하면 자동 업데이트 일시 정지
-const APP_VERSION = '2026-10-29-01'; // ← 새 버전 배포할 때마다 이 값을 올리세요
+const APP_VERSION = '2026-10-29-02'; // ← 새 버전 배포할 때마다 이 값을 올리세요
 // 📝 수정 이력 (맨 위가 최신)
 const CHANGELOG = [
+  { v:'2026-10-29-02', items:[
+      '📍 통계 탭에 「처음 알게 된 곳 현황」 추가 — 고른 연도의 항목별 건수·비율과 입력률'
+  ]},
   { v:'2026-10-29-01', items:[
       '📋 「오늘 한눈에」 칸 추가 — 오늘 체크인 / 오늘 체크아웃(청소 대상) / 내일 체크인 건수, 누르면 목록과 바로 입실완료 처리',
       '🔍 예약 검색 추가 — 손님 이름·전화번호 뒷자리·객실·메모로 두 펜션의 지난 예약까지 찾고, 누르면 그 날짜로 이동'
