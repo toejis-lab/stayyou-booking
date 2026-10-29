@@ -306,6 +306,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tag-b{background:#EEEDFE;color:#534AB7}
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#333;color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 🔍📋 [2026-10-29] 예약 검색 · 오늘 한눈에 */
+.today-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.ts-tile{background:#fff;border-radius:10px;padding:.7rem .85rem;border:1px solid #e8e8e8;text-align:left;cursor:pointer;font-family:inherit;color:inherit;display:flex;flex-direction:column;gap:2px}
+.ts-tile:hover{background:#fafafa}
+.ts-tile.zero .ts-val{color:#bbb}
+.ts-lbl{font-size:11px;color:#888;display:flex;align-items:center;gap:5px}
+.ts-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ts-val{font-size:18px;font-weight:600}
+.ts-val small{font-size:11px;font-weight:500;color:#999;margin-left:2px}
+.ts-sub{font-size:10px;color:#aaa}
+.ts-sub.hot{color:#C2410C;font-weight:600}
+@media(max-width:480px){.ts-tile{padding:.6rem .65rem}.ts-lbl{font-size:10px}}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.sheet-head h3{font-size:16px;font-weight:600}
+.sheet-x{width:28px;height:28px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;font-size:14px;color:#888;cursor:pointer;flex-shrink:0}
+.search-box{display:flex;align-items:center;gap:8px;border:1px solid #e0e0e0;border-radius:10px;padding:0 10px;background:#fff;margin-bottom:.8rem}
+.search-box svg{width:17px;height:17px;color:#999;flex-shrink:0}
+.search-box input{flex:1;border:none;outline:none;padding:10px 0;font-size:14px;font-family:inherit;background:transparent;min-width:0}
+.search-box input::-webkit-search-cancel-button{display:none}
+.search-clear{display:none;border:none;background:#eee;color:#777;width:22px;height:22px;border-radius:50%;font-size:11px;cursor:pointer;flex-shrink:0}
+.search-hint{font-size:12px;color:#999;line-height:1.7;padding:.4rem .2rem}
+.res-group{font-size:11px;font-weight:600;color:#888;margin:.8rem 0 .4rem}
+.res-empty{font-size:13px;color:#aaa;text-align:center;padding:1.2rem 0}
+.res-item{border:1px solid #ececec;border-radius:10px;padding:.7rem .85rem;margin-bottom:8px;cursor:pointer}
+.res-item:hover{background:#f8f8f8}
+.res-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.res-name{font-size:14px;font-weight:600}
+.res-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.res-now{background:#E6F1FB;color:#185FA5}
+.res-meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;color:#777;margin-top:5px}
+.res-meta b{font-weight:600;color:#444}
+.res-act{margin-top:8px;text-align:right}
+.res-item mark{background:#FFF1A8;color:inherit;border-radius:2px}
+.dp-card.flash{animation:cardFlash 1.6s ease}
+@keyframes cardFlash{0%,40%{box-shadow:0 0 0 3px #85B7EB}100%{box-shadow:0 0 0 0 transparent}}
 </style>
 </head>
 <body>
@@ -350,11 +386,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="header">
     <span class="month-label" id="monthLabel"></span>
     <div class="nav-row">
+      <button class="today-btn" onclick="openSearch()" title="예약 검색">🔍 검색</button>
       <button class="today-btn" onclick="goToday()">오늘</button>
       <button class="nav-btn" onclick="chMonth(-1)">&#8249;</button>
       <button class="nav-btn" onclick="chMonth(1)">&#8250;</button>
     </div>
   </div>
+  <div class="today-strip" id="todayStrip"></div>
   <div id="banner"></div>
   <div class="summary" id="summary"></div>
   <div id="dayPanel"></div>
@@ -428,6 +466,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button type="button" onclick="setChannel('전화예약')" id="chBtn_phone" class="ch-btn">전화예약</button>
       </div>
     </div>
+    <div class="fr">
+      <label>처음 알게 된 곳 <span style="color:#aaa;font-weight:400;font-size:10px;">— 손님이 어디서 보고 왔는지 (모르면 비워 두세요)</span></label>
+      <div id="srcBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
     <div class="fr"><label>메모</label><textarea id="mMemo" placeholder="특이사항, 요청사항 등"></textarea>
       <div style="margin-top:6px;display:flex;justify-content:flex-end;">
         <button type="button" onclick="previewThai('mMemo','mMemoThPreview')" style="padding:5px 11px;border:1px solid #B2E4CC;border-radius:8px;background:#F0FBF6;font-size:11px;font-weight:600;color:#0F6E56;cursor:pointer;">🇹🇭 태국어 미리보기</button>
@@ -454,6 +496,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- 직원 휴무 추가/수정 모달 -->
+<!-- 🔍 [2026-10-29] 예약 검색 시트 -->
+<div class="modal-bg" id="searchModalBg" onclick="if(event.target===this)closeSearch()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="sheet-head"><h3>🔍 예약 검색</h3><button class="sheet-x" onclick="closeSearch()" aria-label="닫기">✕</button></div>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="searchInput" placeholder="손님 이름 · 전화번호 · 객실 · 메모" autocomplete="off" oninput="runSearch()" onkeydown="if(event.key==='Enter')this.blur()"/>
+      <button type="button" class="search-clear" id="searchClear" onclick="var i=document.getElementById('searchInput');i.value='';runSearch();i.focus();" aria-label="지우기">✕</button>
+    </div>
+    <div id="searchResults"></div>
+  </div>
+</div>
+
+<!-- 📋 [2026-10-29] 오늘 체크인/체크아웃/내일 체크인 목록 시트 -->
+<div class="modal-bg" id="todayModalBg" onclick="if(event.target===this)closeTodayList()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="sheet-head"><h3 id="todayModalTitle"></h3><button class="sheet-x" onclick="closeTodayList()" aria-label="닫기">✕</button></div>
+    <div id="todayModalBody"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="dayoffModalBg" onclick="if(event.target===this)closeDayoffModal()">
   <div class="modal" style="max-width:420px;">
     <div class="modal-handle"></div>
@@ -1258,6 +1323,7 @@ function switchP(p){
   var isCal=(!isStats&&!isSms&&!isReview);
   var rp=document.getElementById('reviewPanel'); if(rp) rp.style.display=isReview?'':'none';
   document.getElementById('banner').style.display=isCal?'':'none';
+  var ts=document.getElementById('todayStrip'); if(ts) ts.style.display=isCal?'':'none';
   document.getElementById('summary').style.display=isCal?'':'none';
   document.getElementById('dayPanel').style.display=isCal?'':'none';
   document.getElementById('grid').style.display=isCal?'':'none';
@@ -1300,6 +1366,7 @@ function render(){
     gml.classList.add('flash');
   }
   renderBanner(y,m);
+  if(typeof renderTodayStrip==='function') renderTodayStrip();   // 아래쪽 스크립트에 정의 — 첫 렌더 땐 아직 없을 수 있음
   renderSummary(y,m);
   renderDayPanel();
   renderGrid(y,m);
@@ -1516,7 +1583,7 @@ function renderDayPanel(){
         paidLabel = b.paid ? '입금완료' : '미입금';
         ciLabel='체크인'; coLabel='체크아웃'; nightLabel='박'; pplLabel='인원'; telLabel='연락처'; amtLabel='금액';
       }
-      h+='<div class="'+cardClass+'" '+cardClick+'>';
+      h+='<div class="'+cardClass+'" data-bid="'+escH(b.id)+'" '+cardClick+'>';
       h+='<div class="dp-top"><span class="dp-pension '+(b.pension==='A'?'dp-pa':'dp-pb')+'">'+pensionLabel+'</span>';
       if(roomLabel)h+='<span class="dp-room">'+roomLabel+'</span>';
       h+='<span class="dp-name">'+escH(b.name)+'</span>';
@@ -1530,6 +1597,7 @@ function renderDayPanel(){
         h+='<span class="dp-premium-bbq-badge paid" title="결제 확정됨">🍖 BBQ 결제완료</span>';
       }
       if(b.channel)h+='<span class="ch-tag '+CH_CLASS[b.channel]+'" style="margin-left:auto;">'+b.channel+'</span>';
+      if(b.source)h+='<span class="ch-tag" style="background:#F1F1F4;color:#555;'+(b.channel?'':'margin-left:auto;')+'" title="처음 알게 된 곳">📍 '+escH(b.source)+'</span>';
       h+='<span class="dp-paid '+(b.paid?'dp-paid-y':'dp-paid-n')+'">'+paidLabel+'</span></div>';
       // 🍖 프리미엄 BBQ 강조 알림 박스 (미결제 시)
       if(hasPendingBBQ){
@@ -2827,6 +2895,27 @@ function setChannel(ch){
     if(btn) btn.className='ch-btn'+(curChannel===c?' active':'');
   });
 }
+/* 📍 [2026-10-22-01] 처음 알게 된 곳 (광고 효과 검증용)
+   예약경로(channel)는 '결제한 곳', source는 '처음 알게 된 곳'.
+   비워 둘 수 있고, 다시 누르면 선택이 해제된다. 입실완료 창에서도 입력/수정 가능. */
+var SOURCES = ['네이버 검색','인스타','유튜브','지인 소개','재방문','모름'];
+var curSource = null;     // 예약 추가/수정 창
+var _ciSource = null;     // 입실완료 창
+function _srcBtnsHtml(cur, fnName){
+  return SOURCES.map(function(s){
+    return '<button type="button" class="ch-btn'+(cur===s?' active':'')+'" onclick="'+fnName+'(\''+s+'\')">'+s+'</button>';
+  }).join('');
+}
+function renderSourceBtns(){
+  var box=document.getElementById('srcBtns'); if(box) box.innerHTML=_srcBtnsHtml(curSource,'setSource');
+}
+function setSource(s){ curSource = (curSource===s) ? null : s; renderSourceBtns(); }
+function clearSource(){ curSource=null; renderSourceBtns(); }
+function renderCiSourceBtns(){
+  var box=document.getElementById('ciSrcBtns'); if(box) box.innerHTML=_srcBtnsHtml(_ciSource,'setCiSource');
+}
+function setCiSource(s){ _ciSource = (_ciSource===s) ? null : s; renderCiSourceBtns(); }
+
 function clearChannel(){
   curChannel=null;
   CHANNELS.forEach(function(c){var btn=document.getElementById(CH_IDS[c]);if(btn)btn.className='ch-btn';});
@@ -2905,7 +2994,7 @@ function openNew(ds){
   document.getElementById('mIn').value=ds||'';
   document.getElementById('mOut').value=ds?dk(addD(pd(ds),1)):'';
   populateRooms(p);
-  setPaid(true);setChecked([]);clearChannel();setPayMethod('card');
+  setPaid(true);setChecked([]);clearChannel();clearSource();setPayMethod('card');
   [1,2,3,4].forEach(function(i){var btn=document.getElementById('nightBtn'+i);if(btn){btn.style.background='#fff';btn.style.color='#555';btn.style.borderColor='#e0e0e0';}});
   if(ds){var btn1=document.getElementById('nightBtn1');if(btn1){btn1.style.background='#378ADD';btn1.style.color='#fff';btn1.style.borderColor='#378ADD';}}
   document.getElementById('modalBg').classList.add('open');
@@ -2938,6 +3027,7 @@ function openEdit(id){
   setChecked(b.options||[]);
   clearChannel();
   if(b.channel) setChannel(b.channel);
+  curSource = b.source || null; renderSourceBtns();
   // 박수 버튼 하이라이트 복원
   var nights=b.checkIn&&b.checkOut?Math.round((pd(b.checkOut)-pd(b.checkIn))/86400000):0;
   [1,2,3,4].forEach(function(i){
@@ -3053,7 +3143,7 @@ function saveEv(){
       if(paidPremium.length>0) opts = opts.concat(paidPremium);
     }
   }
-  var data={pension:document.getElementById('mPension').value,room:room,name:name,checkIn:ci,checkOut:co,people:parseInt(document.getElementById('mPeople').value)||null,phone:phone,amount:amountNum,optionFee:optionFee,payMethod:payMethod||'card',paid:isPaid,options:opts,channel:curChannel||'',memo:document.getElementById('mMemo').value.trim()};
+  var data={pension:document.getElementById('mPension').value,room:room,name:name,checkIn:ci,checkOut:co,people:parseInt(document.getElementById('mPeople').value)||null,phone:phone,amount:amountNum,optionFee:optionFee,payMethod:payMethod||'card',paid:isPaid,options:opts,channel:curChannel||'',source:curSource||'',memo:document.getElementById('mMemo').value.trim()};
   if(!isEdit){
     data.createdAt = nowMs();      // 오차 보정된 기기 시각 — 오프라인에서도 정확
     // 🕐 서버(Firestore) 시각도 같이 기록 → 기기 시계가 틀려도 등록시각은 정확
@@ -3112,6 +3202,8 @@ function openCheckInModal(id){
   initConfirmedBBQEdit(b);
   // 🛒 현장 추가 결제 섹션 초기화
   initOnsiteSection(b);
+  // 📍 처음 알게 된 곳 (체크인 때 손님에게 물어보고 입력)
+  _ciSource = b.source || null; renderCiSourceBtns();
   // 버튼 구성
   var actions = document.getElementById('checkInModalActions');
   if(b.checkedIn){
@@ -3158,7 +3250,7 @@ function confirmCheckIn(){
   var memo = document.getElementById('checkInMemoInput').value.trim();
   // 🛒 현재 입력 중인 현장 추가 결제도 자동으로 추가 (입력값이 있으면)
   autoAddPendingOnsite();
-  var data = {checkedIn: true, checkInTime: _nowTime(), checkInDate: todayKST(), checkInMemo: memo};
+  var data = {checkedIn: true, checkInTime: _nowTime(), checkInDate: todayKST(), checkInMemo: memo, source: _ciSource||''};
   // 🍖 예약시 신청한 프리미엄 BBQ 결제 확정 처리 (옵션에 결제수단·결제시각만 기록 — 전체 매출에는 합산하지 않고 별도 집계)
   var bbqResult = confirmPremiumBBQ(b);
   var newOptions = bbqResult.options; // 예약시 신청분 반영된 옵션 배열
@@ -3204,7 +3296,7 @@ function saveCheckInMemo(){
   var memo = document.getElementById('checkInMemoInput').value.trim();
   // 🛒 현재 입력 중인 현장 추가 결제도 자동으로 추가 (입력값이 있으면)
   autoAddPendingOnsite();
-  var data = {checkInMemo: memo};
+  var data = {checkInMemo: memo, source: _ciSource||''};
   // 🍖 예약시 신청한 프리미엄 BBQ 결제 확정 처리 (옵션에만 기록 — 전체 매출 미합산, 별도 집계)
   var bbqResult = confirmPremiumBBQ(b);
   var newOptions = bbqResult.options;
@@ -4736,6 +4828,19 @@ function renderStats(){
     h+='</div>';
     h+='<div style="font-size:11px;color:#bbb;margin-top:6px;">현재 보관 중: 예약 '+bookings.length+'건 · 직원 휴무 '+staffDayoffs.length+'건</div>';
     h+='</div>';
+    // 📤 분석용 내보내기 (광고 효과 검증용 — 손님 이름·연락처·메모 제외)
+    var _rng = analysisDefaultRange();
+    h+='<div class="chart-section" style="border:1px solid #B5D4F4;background:#F5F9FF;">';
+    h+='<div class="chart-section-title" style="color:#185FA5;">📤 분석용 내보내기</div>';
+    h+='<div style="font-size:11px;color:#999;line-height:1.6;margin-bottom:8px;">체크인 날짜 기준으로 고른 기간의 예약을 엑셀에서 열 수 있는 파일(CSV)로 내려받습니다. 손님 이름, 연락처, 메모는 들어가지 않습니다.</div>';
+    h+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">';
+    h+='<input type="month" id="anFrom" value="'+_rng.from+'" style="padding:7px 9px;border:1px solid #B5D4F4;border-radius:8px;font-size:13px;font-family:inherit;">';
+    h+='<span style="font-size:12px;color:#888;">부터</span>';
+    h+='<input type="month" id="anTo" value="'+_rng.to+'" style="padding:7px 9px;border:1px solid #B5D4F4;border-radius:8px;font-size:13px;font-family:inherit;">';
+    h+='<span style="font-size:12px;color:#888;">까지</span>';
+    h+='</div>';
+    h+='<button type="button" onclick="exportAnalysis()" style="width:100%;padding:10px;border:none;border-radius:10px;background:#185FA5;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">⬇️ 분석용 파일 내려받기</button>';
+    h+='</div>';
   }
 
   panel.innerHTML=h;
@@ -4788,6 +4893,80 @@ function renderStats(){
       }
     });
   },50);
+}
+
+// ─────────── 📤 분석용 내보내기 (광고 효과 검증) ───────────
+function analysisDefaultRange(){
+  var now=new Date(), to=now.getFullYear()+'-'+pad(now.getMonth()+1);
+  var from=to;
+  bookings.forEach(function(b){ if(b && b.checkIn && b.checkIn.slice(0,7)<from) from=b.checkIn.slice(0,7); });
+  return {from:from, to:to};
+}
+function _csvCell(v){
+  if(v==null) return '';
+  var s=String(v);
+  if(/[",\r\n]/.test(s)) s='"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function buildAnalysisRows(from, to){
+  var list=bookings.filter(function(b){
+    if(!b || !b.checkIn || !b.checkOut) return false;
+    var m=b.checkIn.slice(0,7);
+    return m>=from && m<=to;
+  }).sort(function(a,b){ return a.checkIn<b.checkIn?-1:a.checkIn>b.checkIn?1:0; });
+  var head=['펜션','객실','체크인','체크아웃','박수','객실 수(전체대관 환산)','인원','예약경로','처음 알게 된 곳','예약 등록일','예약~체크인 일수','총 금액','객실 요금','옵션비','결제수단','입금 여부','프리미엄BBQ 금액(별도)','입실완료','리뷰 자격','리뷰 작성'];
+  var rows=[head];
+  list.forEach(function(b){
+    var nights=Math.round((pd(b.checkOut)-pd(b.checkIn))/86400000);
+    var units=(b.room==='전체대관')?5:(b.room==='별관-별관 전체')?6:1;
+    var created=getCreatedDate(b);
+    var lead=created ? Math.round((pd(b.checkIn)-pd(created))/86400000) : '';
+    var total=b.amount||0;
+    var opt=b.optionFee||calcOptionFee(b.options||[]);
+    var roomFee=Math.max(0,total-opt);
+    var bbq=calcPremiumBBQRevenue(b).total;
+    var rt=reviewType(b);
+    rows.push([
+      pensionName(b.pension),
+      (b.room||'').replace('-',' '),
+      b.checkIn, b.checkOut, nights, units,
+      b.people||'',
+      b.channel||'',
+      b.source||'',
+      created||'',
+      lead,
+      total, roomFee, opt,
+      b.payMethod==='cash'?'현금':'카드',
+      b.paid?'입금':'미입금',
+      bbq||0,
+      b.checkedIn?'Y':'',
+      reviewTypeLabel(rt),
+      rt==='none'?'':(b.reviewWritten?'Y':'')
+    ]);
+  });
+  return rows;
+}
+function exportAnalysis(){
+  if(!isAdmin){ toast('관리자만 내보낼 수 있어요'); return; }
+  var f=document.getElementById('anFrom'), t=document.getElementById('anTo');
+  var from=(f&&f.value)||'', to=(t&&t.value)||'';
+  if(!from||!to){ toast('기간을 선택해 주세요'); return; }
+  if(from>to){ var tmp=from; from=to; to=tmp; }
+  var rows=buildAnalysisRows(from,to);
+  if(rows.length<=1){ toast('그 기간에 체크인한 예약이 없어요'); return; }
+  var csv='\uFEFF'+rows.map(function(r){ return r.map(_csvCell).join(','); }).join('\r\n');
+  try{
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='예약분석_'+from.replace('-','')+'-'+to.replace('-','')+'.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },1500);
+    toast('📤 예약 '+(rows.length-1)+'건을 내보냈어요');
+  }catch(e){
+    alert('파일을 만들지 못했어요: '+(e&&e.message?e.message:e));
+  }
 }
 
 // ─────────── 💾 백업 / 복원 ───────────
@@ -5063,9 +5242,18 @@ document.addEventListener('visibilitychange', function(){
 //   - 로컬 파일(file://)에서는 자동 새로고침 비활성화
 //   - 직전 새로고침 시각이 10초 이내면 차단 (loop guard)
 //   - 새로고침 누적 횟수가 짧은 시간 안에 3회 초과하면 자동 업데이트 일시 정지
-const APP_VERSION = '2026-09-15-01'; // ← 새 버전 배포할 때마다 이 값을 올리세요
+const APP_VERSION = '2026-10-29-01'; // ← 새 버전 배포할 때마다 이 값을 올리세요
 // 📝 수정 이력 (맨 위가 최신)
 const CHANGELOG = [
+  { v:'2026-10-29-01', items:[
+      '📋 「오늘 한눈에」 칸 추가 — 오늘 체크인 / 오늘 체크아웃(청소 대상) / 내일 체크인 건수, 누르면 목록과 바로 입실완료 처리',
+      '🔍 예약 검색 추가 — 손님 이름·전화번호 뒷자리·객실·메모로 두 펜션의 지난 예약까지 찾고, 누르면 그 날짜로 이동'
+  ]},
+  { v:'2026-10-22-01', items:[
+      '📍 「처음 알게 된 곳」 칸 추가 (네이버 검색·인스타·유튜브·지인 소개·재방문·모름) — 예약 입력 창과 입실완료 창 모두에서 입력·수정, 비워 둘 수 있음',
+      '예약 카드에 처음 알게 된 곳 표시',
+      '📤 통계 탭에 분석용 내보내기 추가 (관리자 전용) — 기간을 골라 CSV로 내려받기, 손님 이름·연락처·메모 제외'
+  ]},
   { v:'2026-09-15-01', items:[
       '📨 문자 발송 설정에 삭제 기능 추가 — 문안 버전 삭제 버튼을 항상 표시, 발송 규칙 자체를 삭제하는 「🗑 규칙 삭제」 버튼 신설',
       '삭제한 기본 규칙은 앱을 다시 열어도 자동 복구되지 않음 (설정 하단 「되살리기」로 복구 가능), 삭제 내역은 기기 간 동기화',
@@ -5345,6 +5533,10 @@ document.addEventListener('visibilitychange', function(){
       </div>
     </div>
 
+    <div class="fr" style="margin-bottom:12px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;font-weight:500;">📍 처음 알게 된 곳 <span style="color:#bbb;font-weight:400;">(손님에게 "어디 보고 오셨어요?" — 모르면 비워 두세요)</span></label>
+      <div id="ciSrcBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
     <div class="fr">
       <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;font-weight:500;">📝 추가 요청사항 / 입실 메모 <span style="color:#bbb;font-weight:400;">(선택)</span></label>
       <textarea id="checkInMemoInput" placeholder="예: 추가 수건 요청, 늦은 체크아웃 요청 등" style="width:100%;padding:10px 12px;border:1px solid #e0e0e0;border-radius:10px;background:#fff;font-size:13px;color:#1a1a1a;font-family:inherit;resize:vertical;min-height:80px;"></textarea>
@@ -5426,6 +5618,185 @@ document.addEventListener('visibilitychange', function(){
     <div id="thaiContent"></div>
   </div>
 </div>
+
+<script>
+/* ============================================================
+   🆕 [2026-10-29] 오늘 한눈에 + 예약 검색
+   - 달력 위 3칸: 오늘 체크인 / 오늘 체크아웃(청소 대상) / 내일 체크인
+     (보고 있는 펜션 탭 기준, '전체 보기'면 두 펜션 합산)
+   - 검색: 이름·전화번호(숫자 3자리 이상)·객실·메모·입실메모로 전체 예약에서 찾기
+   - 결과를 누르면 그 날짜의 예약 현황으로 이동하고 해당 카드를 잠깐 강조
+   - 데이터는 읽기만 한다 (저장 로직은 건드리지 않음)
+   ============================================================ */
+function _tdKeys(){ var n=new Date(); return { t:dk(n), tm:dk(addD(n,1)) }; }
+function _byRoom(a,b){ return (a.pension+rdisplay(a)).localeCompare(b.pension+rdisplay(b),'ko',{numeric:true}); }
+function _inCurP(b){ return curP==='ALL' || curP===b.pension || (curP!=='A' && curP!=='B'); }
+function todayLists(){
+  var k=_tdKeys();
+  var vis=bookings.filter(_inCurP);
+  return {
+    t:k.t, tm:k.tm,
+    in:  vis.filter(function(b){return b.checkIn===k.t;}).sort(_byRoom),
+    out: vis.filter(function(b){return b.checkOut===k.t;}).sort(_byRoom),
+    tmr: vis.filter(function(b){return b.checkIn===k.tm;}).sort(_byRoom)
+  };
+}
+function renderTodayStrip(){
+  var box=document.getElementById('todayStrip'); if(!box) return;
+  var L=todayLists();
+  var waitIn=L.in.filter(function(b){return !b.checkedIn;}).length;
+  var unpaidTmr=L.tmr.filter(function(b){return !b.paid;}).length;
+  function tile(kind,dot,lbl,list,sub,hot){
+    return '<button type="button" class="ts-tile'+(list.length?'':' zero')+'" onclick="openTodayList(\''+kind+'\')">'+
+      '<span class="ts-lbl"><span class="ts-dot" style="background:'+dot+'"></span>'+lbl+'</span>'+
+      '<span class="ts-val">'+list.length+'<small>건</small></span>'+
+      '<span class="ts-sub'+(hot?' hot':'')+'">'+sub+'</span></button>';
+  }
+  var inSub = !L.in.length ? '입실 없음' : (waitIn ? '🔑 입실 대기 '+waitIn : '✅ 모두 입실');
+  var outSub = L.out.length ? '🧹 청소 대상' : '퇴실 없음';
+  var tmrSub = !L.tmr.length ? '예약 없음' : (unpaidTmr && isAdmin ? '⚠ 미입금 '+unpaidTmr : '준비 확인');
+  box.innerHTML =
+    tile('in','#1D9E75','오늘 체크인',L.in,inSub,waitIn>0)+
+    tile('out','#8B95A1','오늘 체크아웃',L.out,outSub,false)+
+    tile('tmr','#378ADD','내일 체크인',L.tmr,tmrSub,unpaidTmr>0&&isAdmin);
+}
+
+function _shortDate(s){ if(!s) return ''; var d=pd(s); return (d.getMonth()+1)+'/'+d.getDate()+'('+DAYS[d.getDay()]+')'; }
+function _hl(text,q){
+  var s=escH(text||'');
+  if(!q) return s;
+  var qe=escH(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  try{ return s.replace(new RegExp(qe,'gi'),function(m){return '<mark>'+m+'</mark>';}); }catch(e){ return s; }
+}
+// 검색·오늘 목록에서 공통으로 쓰는 예약 한 줄
+function bookingRowHtml(b,q,ds,extra){
+  var t=dk(new Date());
+  var nights=Math.round((pd(b.checkOut)-pd(b.checkIn))/86400000);
+  var staying=(t>=b.checkIn && t<b.checkOut);
+  var h='<div class="res-item" role="button" tabindex="0" onclick="goToBooking(\''+escH(b.id)+'\',\''+ds+'\')">';
+  h+='<div class="res-top"><span class="dp-pension '+(b.pension==='A'?'dp-pa':'dp-pb')+'">'+(b.pension==='A'?'스테이 유':'스테이 느긋')+'</span>';
+  if(rdisplay(b)) h+='<span class="dp-room">'+_hl(rdisplay(b),q)+'</span>';
+  h+='<span class="res-name">'+_hl(b.name,q)+'</span>';
+  if(b.checkedIn) h+='<span class="res-badge dp-paid-y">✅ 입실완료</span>';
+  else if(staying) h+='<span class="res-badge res-now">이용 중</span>';
+  if(!b.paid) h+='<span class="res-badge dp-paid-n">미입금</span>';
+  h+='</div><div class="res-meta"><span>📅 <b>'+_shortDate(b.checkIn)+' → '+_shortDate(b.checkOut)+'</b> · '+nights+'박</span>';
+  if(b.people) h+='<span>👤 '+b.people+'명</span>';
+  if(b.phone) h+='<span>📞 '+escH(b.phone)+'</span>';
+  if(b.channel) h+='<span>'+escH(b.channel)+'</span>';
+  h+='</div>';
+  if(q && b.memo && b.memo.toLowerCase().indexOf(q.toLowerCase())>=0) h+='<div class="dp-memo" style="margin-top:6px;">'+_hl(b.memo,q)+'</div>';
+  if(extra) h+=extra;
+  h+='</div>';
+  return h;
+}
+
+// ── 오늘 목록 시트 ──
+function openTodayList(kind){
+  var L=todayLists();
+  var map={
+    in:{title:'오늘 체크인',list:L.in,empty:'오늘 체크인하는 예약이 없어요.'},
+    out:{title:'오늘 체크아웃',list:L.out,empty:'오늘 체크아웃하는 예약이 없어요.'},
+    tmr:{title:'내일 체크인',list:L.tmr,empty:'내일 체크인하는 예약이 없어요.'}
+  };
+  var m=map[kind]; if(!m) return;
+  var dateStr = kind==='tmr' ? fmtKDate(L.tm) : fmtKDate(L.t);
+  document.getElementById('todayModalTitle').innerHTML=m.title+' <span style="font-size:13px;color:#999;font-weight:600;">'+dateStr+' · '+m.list.length+'건</span>';
+  var h='';
+  if(!m.list.length) h='<div class="res-empty">'+m.empty+'</div>';
+  m.list.forEach(function(b){
+    // 체크아웃 손님은 마지막 숙박일 화면에 보이므로 그 날로 이동
+    var ds = kind==='out' ? dk(addD(pd(b.checkOut),-1)) : b.checkIn;
+    var extra='';
+    if(kind==='in' && isAdmin && !b.checkedIn){
+      extra='<div class="res-act"><button type="button" class="dp-checkin-btn" onclick="event.stopPropagation();todayCheckIn(\''+escH(b.id)+'\')">🔑 입실완료 처리</button></div>';
+    }
+    h+=bookingRowHtml(b,'',ds,extra);
+  });
+  if(kind==='out' && m.list.length){
+    h+='<div class="search-hint" style="padding-top:.6rem;">🧹 위 객실은 오늘 퇴실 후 청소가 필요해요.</div>';
+  }
+  document.getElementById('todayModalBody').innerHTML=h;
+  document.getElementById('todayModalBg').classList.add('open');
+}
+function closeTodayList(){ var bg=document.getElementById('todayModalBg'); if(bg) bg.classList.remove('open'); }
+function todayCheckIn(id){
+  closeTodayList();
+  // 시트가 닫히며 뒤로가기 기록을 정리할 시간을 준 뒤 입실완료 창을 연다
+  setTimeout(function(){ openCheckInModal(id); }, 320);
+}
+
+// ── 예약 검색 시트 ──
+function openSearch(){
+  document.getElementById('searchModalBg').classList.add('open');
+  runSearch();
+  setTimeout(function(){ var i=document.getElementById('searchInput'); if(i) i.focus(); }, 80);
+}
+function closeSearch(){ var bg=document.getElementById('searchModalBg'); if(bg) bg.classList.remove('open'); }
+function runSearch(){
+  var inp=document.getElementById('searchInput'), box=document.getElementById('searchResults');
+  if(!inp||!box) return;
+  var q=inp.value.trim();
+  document.getElementById('searchClear').style.display = q ? 'block' : 'none';
+  if(!q){
+    box.innerHTML='<div class="search-hint">손님 이름 일부, 전화번호 뒷자리(숫자 3자리 이상), 객실 이름이나 메모 내용으로 찾을 수 있어요.<br>두 펜션의 지난 예약까지 모두 검색합니다.</div>';
+    return;
+  }
+  var ql=q.toLowerCase(), qd=q.replace(/[^0-9]/g,'');
+  var res=bookings.filter(function(b){
+    if((b.name||'').toLowerCase().indexOf(ql)>=0) return true;
+    if(qd.length>=3 && qd.length===q.replace(/[\s-]/g,'').length && (b.phone||'').replace(/[^0-9]/g,'').indexOf(qd)>=0) return true;
+    if((b.room||'').toLowerCase().indexOf(ql)>=0) return true;
+    if((b.memo||'').toLowerCase().indexOf(ql)>=0) return true;
+    if((b.checkInMemo||'').toLowerCase().indexOf(ql)>=0) return true;
+    return false;
+  });
+  if(!res.length){ box.innerHTML='<div class="res-empty">「'+escH(q)+'」에 해당하는 예약이 없어요.</div>'; return; }
+  var t=dk(new Date());
+  var upcoming=res.filter(function(b){return b.checkOut>t;}).sort(function(a,b){return a.checkIn<b.checkIn?-1:a.checkIn>b.checkIn?1:0;});
+  var past=res.filter(function(b){return b.checkOut<=t;}).sort(function(a,b){return a.checkIn>b.checkIn?-1:a.checkIn<b.checkIn?1:0;});
+  var LIMIT=30, h='';
+  function group(title,list){
+    if(!list.length) return;
+    h+='<div class="res-group">'+title+' '+list.length+'건'+(list.length>LIMIT?' (최근 '+LIMIT+'건 표시)':'')+'</div>';
+    list.slice(0,LIMIT).forEach(function(b){
+      var ds=(t>=b.checkIn && t<b.checkOut) ? t : b.checkIn;
+      h+=bookingRowHtml(b,q,ds);
+    });
+  }
+  group('📌 이용 중 · 예정',upcoming);
+  group('🕘 지난 예약',past);
+  box.innerHTML=h;
+}
+
+// 예약 하나로 이동: 해당 펜션 탭 → 그 달 → 그 날짜 예약 현황 열고 카드 강조
+function goToBooking(id,ds){
+  var b=bookings.find(function(x){return x.id===id;}); if(!b) return;
+  closeSearch(); closeTodayList();
+  setTimeout(function(){
+    if(curP!=='ALL' && curP!==b.pension) switchP(b.pension);
+    var d=pd(ds);
+    cur=new Date(d.getFullYear(), d.getMonth(), 1);
+    selDate=null;
+    render();
+    selectDay(ds);
+    setTimeout(function(){
+      var cards=document.querySelectorAll('#dayPanel .dp-card');
+      for(var i=0;i<cards.length;i++){
+        if(cards[i].getAttribute('data-bid')===id){
+          var c=cards[i];
+          c.scrollIntoView({behavior:'smooth',block:'center'});
+          c.classList.add('flash');
+          setTimeout(function(){ c.classList.remove('flash'); }, 1800);
+          break;
+        }
+      }
+    }, 120);
+  }, 320);
+}
+// 첫 렌더 시점엔 이 함수가 없었으므로 여기서 한 번 그려 준다
+renderTodayStrip();
+</script>
 
 <script>
 /* ============================================================
@@ -5606,6 +5977,21 @@ document.addEventListener('visibilitychange', function(){
     });
     mo5.observe(dayoffBg, { attributes: true, attributeFilter: ['class'] });
   }
+
+  // ---- 7) [2026-10-29] 예약 검색·오늘 목록 시트 ----
+  [['searchModalBg','searchModal',function(){ if(typeof closeSearch==='function') closeSearch(); }],
+   ['todayModalBg','todayModal',function(){ if(typeof closeTodayList==='function') closeTodayList(); }]
+  ].forEach(function(cfg){
+    var el = document.getElementById(cfg[0]);
+    if(!el) return;
+    var wasOpen = false;
+    new MutationObserver(function(){
+      var nowOpen = el.classList.contains('open');
+      if(nowOpen && !wasOpen) pushLayer(cfg[1], cfg[2]);
+      else if(!nowOpen && wasOpen) popLayer(cfg[1]);
+      wasOpen = nowOpen;
+    }).observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
 })();
 
 /* ============================================================
