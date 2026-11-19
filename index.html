@@ -413,6 +413,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="modal">
     <div class="modal-handle"></div>
     <h3 id="mTitle">새 예약</h3>
+    <!-- 📷 [2026-11-19-01] 예약 알림 사진으로 채우기 (새 예약일 때만 보임) -->
+    <div id="ocrBox" style="margin:-4px 0 12px;">
+      <button type="button" id="ocrBtn" onclick="ocrPick()" style="width:100%;padding:10px;border:1px dashed #378ADD;border-radius:12px;background:#EAF3FC;color:#185FA5;font-size:13px;font-weight:600;cursor:pointer;">📷 예약 알림 사진으로 채우기 <span style="font-weight:400;font-size:11px;color:#5A86B5;">(네이버·여기어때·떠나요)</span></button>
+      <input type="file" id="ocrFile" accept="image/*" style="display:none" onchange="ocrFromFile(this)"/>
+      <div style="font-size:10px;color:#999;margin-top:4px;text-align:center;">PC에서는 캡처를 복사한 뒤 이 창에서 Ctrl+V 해도 됩니다</div>
+      <div id="ocrStatus" style="display:none;margin-top:6px;font-size:12px;color:#185FA5;text-align:center;"></div>
+      <div id="ocrResult" style="display:none;margin-top:8px;padding:9px 11px;background:#F0FBF6;border:1px solid #B2E4CC;border-radius:10px;font-size:12px;line-height:1.6;"></div>
+    </div>
     <div class="fr">
       <label>펜션</label>
       <select id="mPension" onchange="onPensionChange()">
@@ -618,6 +626,7 @@ function switchToAdmin(){
 
 <script>
 var ROOMS_A = {'본관':['101','102','201','202','301','302','401'],'별관':['1A','1B','2A','2B','2C','2D','별관 전체']};
+var CLOSED_ROOM_RE = /^별관-/;   // 🚫 [2026-11-19-01] 별관 운영 종료 — 새 예약·빈 객실에서 제외 (지난 예약·통계는 그대로)
 var ROOMS_B = ['스테이 1','스테이 2','스테이 3','스테이 4','스테이 독채 2층','전체대관'];
 // A 펜션: 바베큐 가스(3만)/숯(5만), 온수풀(3/5/6/7/8/9/10만), 불멍, 인원추가(인당 3만), 애견추가(마리당 2만)
 // B 펜션 (스테이 느긋하게): 바베큐(1만), 인원추가(2만/명) 만
@@ -1741,6 +1750,7 @@ function renderDayPanel(){
       ROOMS_B.forEach(function(r){ allRooms.push({val:r, label:r, wing:''}); });
     }
     return allRooms.filter(function(r){
+      if(CLOSED_ROOM_RE.test(r.val)) return false;   // 🚫 운영 종료한 별관은 빈 객실로 안 보임
       if(occupiedRooms.indexOf(r.val) >= 0) return false;
       if(annexAllBooked && ANNEX_ROOMS.indexOf(r.val) >= 0) return false;
       if(stayBAllBooked && STAY_B_ROOMS.indexOf(r.val) >= 0) return false;
@@ -2144,7 +2154,11 @@ function populateRooms(p){
   var firstAvail=null;
   var prevStillAvail=false;
   var prevExists=false;   // 이전 선택값이 현재 펜션의 객실 목록에 있는가 (펜션 전환과 구분)
+  // 🚫 [2026-11-19-01] 별관은 운영 종료 — 새 예약 목록에서 뺌 (지난 별관 예약을 수정할 때만 그 방을 보여 줌, 통계는 그대로)
+  var _editRoom=null;
+  if(editId){var _eb=bookings.find(function(x){return x.id===editId;});_editRoom=_eb?_eb.room:null;}
   getRooms(p).forEach(function(r){
+    if(CLOSED_ROOM_RE.test(r.val) && r.val!==_editRoom) return;
     var o=document.createElement('option');
     o.value=r.val;o.textContent=r.label;
     if(prevSelected&&r.val===prevSelected)prevExists=true;
@@ -2985,6 +2999,7 @@ function openNew(ds){
   editId=null;isPaid=true;
   document.getElementById('mTitle').textContent='새 예약 추가';
   document.getElementById('btnDel').style.visibility='hidden';
+  (function(){var ob=document.getElementById('ocrBox');if(ob)ob.style.display='block';if(typeof ocrReset==='function')ocrReset();})();
   var p=curP==='ALL'?'A':curP;
   document.getElementById('mPension').value=p;
   ['mName','mPeople','mPhone','mAmount','mMemo'].forEach(function(id){document.getElementById(id).value=''});
@@ -3006,6 +3021,7 @@ function openEdit(id){
   editId=b.id;
   document.getElementById('mTitle').textContent='예약 수정';
   document.getElementById('btnDel').style.visibility='visible';
+  (function(){var ob=document.getElementById('ocrBox');if(ob)ob.style.display='none';})();
   document.getElementById('mPension').value=b.pension;
   populateRooms(b.pension);
   document.getElementById('mRoom').value=b.room||'';
@@ -5066,6 +5082,257 @@ function restoreData(bk, df){
     toast('✅ 복원 완료 — 예약 '+bk.length+'건');
   }
 }
+
+/* 📷 [2026-11-19-01] 예약 알림 사진으로 채우기 — 글자 해석 부분
+   네이버(톡톡) / 여기어때(알림톡) / 떠나요(알림톡) 예약 알림을 읽은 글자에서
+   펜션·객실·이름·연락처·날짜·인원·금액·옵션을 뽑는다. 저장은 사람이 확인 후 직접 누른다. */
+// 채널별 기준인원 (네이버는 본관 2·3층도 4인, 여기어때·떠나요는 2인)
+var OCR_BASE_PEOPLE = {
+  '네이버':  {'101':4,'102':4,'201':4,'202':4,'301':4,'302':4,'401':8},
+  '여기어때':{'101':4,'102':4,'201':2,'202':2,'301':2,'302':2,'401':6},
+  '떠나요':  {'101':4,'102':4,'201':2,'202':2,'301':2,'302':2,'401':6}
+};
+var OCR_BASE_PEOPLE_B = {'스테이 1':2,'스테이 2':2,'스테이 3':2,'스테이 4':2,'스테이 독채 2층':4};
+function _ocrYmd(y,m,d){ return y+'-'+('0'+m).slice(-2)+'-'+('0'+d).slice(-2); }
+function _ocrAddDays(s,n){ var p=s.split('-'); var d=new Date(+p[0],+p[1]-1,+p[2]); d.setDate(d.getDate()+n); return _ocrYmd(d.getFullYear(),d.getMonth()+1,d.getDate()); }
+function _ocrNum(s){ return parseInt(String(s||'').replace(/[^0-9]/g,''),10)||0; }
+function parseBookingText(raw, todayStr){
+  var r={channel:'',pension:'',room:'',roomLabel:'',name:'',phone:'',checkIn:'',checkOut:'',nights:0,people:0,extra:0,amount:0,options:[],warnings:[]};
+  var text=String(raw||'').replace(/\r/g,'').replace(/[：]/g,':').replace(/[|]/g,']');
+  // ── 채널 구분 + 사진에 알림이 여러 개면 맨 아래(가장 최근) 것만 ──
+  var marks;
+  if(/떠나요|펜션명\s*:/.test(text)){ r.channel='떠나요'; marks=/\[\s*떠나요/g; }
+  else if(/여기어때|입실일시|퇴실일시/.test(text)){ r.channel='여기어때'; marks=/\[\s*여기어때\s*\]/g; }
+  else if(/예약상품|이용기간|예약이\s*확정|네이버페이/.test(text)){ r.channel='네이버'; marks=/예약이\s*확정/g; }
+  else { r.warnings.push('어느 채널 알림인지 알아보지 못했어요. 네이버·여기어때·떠나요 예약 알림 사진인지 확인해 주세요.'); return r; }
+  var idx=[],m; while((m=marks.exec(text))) idx.push(m.index);
+  if(idx.length>1) r.warnings.push('사진에 예약 알림이 '+idx.length+'개 보여요. 맨 아래 알림을 읽었어요.');
+  if(idx.length) text=text.slice(idx[idx.length-1]);
+  var flat=text.replace(/\s+/g,' ');
+  // ── 펜션·객실 ──
+  var bm=flat.match(/스테이\s*독채|스테이\s*([1-4])(?![0-9])/);
+  if(/느긋하게/.test(flat)||bm){
+    r.pension='B';
+    if(bm) r.room = /독채/.test(bm[0]) ? '스테이 독채 2층' : '스테이 '+bm[1];
+    r.roomLabel=r.room;
+  } else {
+    r.pension='A';
+    var am=flat.match(/([1-4]0[12])\s*호/);
+    if(am && OCR_BASE_PEOPLE['네이버'][am[1]]){ r.room='본관-'+am[1]; r.roomLabel='[본관] '+am[1]; }
+  }
+  if(!r.room) r.warnings.push('객실을 알아보지 못했어요. 객실을 직접 골라 주세요.');
+  // ── 이름 ──
+  var nm=flat.match(/예약자(?:명)?\s*[:.]?\s*([가-힣]{2,5}|[A-Za-z][A-Za-z ]{1,30}?)(?=\s*[,，]|\s+(?:0|전화|예약|객실|\+|\*)|\s*$)/) || flat.match(/예약자(?:명)?\s*[:.]?\s*([가-힣]{2,5})/);
+  if(nm) r.name=nm[1].trim(); else r.warnings.push('예약자 이름을 찾지 못했어요.');
+  // ── 연락처 (라벨 옆 번호 우선) ──
+  var PH=/(01[016789]|050\d|0[2-9]\d?)[-. ]?(\d{3,4})[-. ]?(\d{4})(?!\d)/;
+  var pm=null, lab=flat.match(/(?:전화번호|안심번호|연락처|예약자[^0-9]{0,12})[^0-9]{0,6}((?:\d[-. ]?){9,12}\d)/);
+  if(lab) pm=lab[1].replace(/[^0-9]/g,'').match(/^(01[016789]|050\d|0[2-9]\d?)(\d{3,4})(\d{4})$/);
+  if(!pm) pm=flat.match(PH);
+  if(pm) r.phone=pm[1]+pm[2]+pm[3]; else r.warnings.push('연락처를 찾지 못했어요.');
+  // ── 날짜 ──
+  var today=todayStr||_ocrYmd(new Date().getFullYear(),new Date().getMonth()+1,new Date().getDate());
+  var ty=+today.slice(0,4);
+  function guessYear(mo,d){ // 연도가 없는 알림(여기어때): 두 달 넘게 지난 날짜면 내년으로
+    var s=_ocrYmd(ty,mo,d); return (s<_ocrAddDays(today,-60)) ? ty+1 : ty;
+  }
+  var dm;
+  if(r.channel==='네이버' && (dm=flat.match(/(20\d\d)\s*[.\-]\s*(\d{1,2})\s*[.\-]\s*(\d{1,2})\.?\s*(?:\([^)]{0,3}\))?\s*~\s*(?:(20\d\d)\s*[.\-]\s*)?(\d{1,2})\s*[.\-]\s*(\d{1,2})/))){
+    var y1=+dm[1], y2=dm[4]?+dm[4]:(+dm[5]<+dm[2]?y1+1:y1);
+    r.checkIn=_ocrYmd(y1,+dm[2],+dm[3]); r.checkOut=_ocrYmd(y2,+dm[5],+dm[6]);
+  } else if(r.channel==='떠나요' && (dm=flat.match(/(20\d\d)\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})\s*(?:\([^)]{0,3}\))?\s*\/?\s*(\d+)\s*박/))){
+    r.checkIn=_ocrYmd(+dm[1],+dm[2],+dm[3]); r.checkOut=_ocrAddDays(r.checkIn,+dm[4]);
+  } else if(r.channel==='여기어때'){
+    var di=flat.match(/입실일시\s*[:.]?\s*(\d{1,2})\s*\/\s*(\d{1,2})/), dout=flat.match(/퇴실일시\s*[:.]?\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
+    if(di){ var yi=guessYear(+di[1],+di[2]); r.checkIn=_ocrYmd(yi,+di[1],+di[2]);
+      if(dout){ var yo=(+dout[1]<+di[1])?yi+1:yi; r.checkOut=_ocrYmd(yo,+dout[1],+dout[2]); }
+      else { var nn=flat.match(/\((\d+)\s*박\)/); if(nn) r.checkOut=_ocrAddDays(r.checkIn,+nn[1]); }
+    }
+  }
+  if(r.checkIn&&r.checkOut&&r.checkOut>r.checkIn){
+    var a=r.checkIn.split('-'),b=r.checkOut.split('-');
+    r.nights=Math.round((new Date(+b[0],+b[1]-1,+b[2])-new Date(+a[0],+a[1]-1,+a[2]))/86400000);
+    if(r.nights>14) r.warnings.push('숙박이 '+r.nights+'박으로 읽혔어요. 날짜를 꼭 확인해 주세요.');
+  } else { r.checkIn=r.checkIn||''; r.checkOut=''; r.warnings.push('체크인·체크아웃 날짜를 다 찾지 못했어요.'); }
+  // ── 금액 (알림의 결제금액·판매금액 그대로) ──
+  var mm=flat.match(/(?:결제금액|판매금액)[^0-9]{0,8}([\d,]{4,})\s*원/);
+  if(mm) r.amount=_ocrNum(mm[1]); else r.warnings.push('금액을 찾지 못했어요.');
+  // ── 옵션 (네이버: 결제금액 아래 내역 + 사용쿠폰) ──
+  var A=r.pension==='A';
+  if(r.channel==='네이버'){
+    var det=flat.split(/결제금액/).slice(1).join(' ');
+    var couponTxt='', cm=det.match(/사용\s*쿠폰\s*(.*)$/); if(cm){ couponTxt=cm[1]; det=det.slice(0,cm.index); }
+    var em=det.match(/(?:인원\s*추가|추가\s*인원)\s*\(\s*(\d+)\s*\)/);
+    if(em) r.extra=+em[1];
+    var dog=det.match(/(?:애견|반려견|반려동물)[^()]{0,15}\(\s*(\d+)\s*\)/);
+    if(dog) r.options.push({key:A?'애견추가':'애견추가-B',count:+dog[1]});
+    var pool=det.match(/온수\s*풀[^+]*?\(\s*(\d+)\s*\)\s*([\d,]{5,})\s*원/);
+    if(A && pool){
+      var tot=_ocrNum(pool[2]), cnt=+pool[1]||1, key=null;
+      [tot, tot/cnt].some(function(v){ var k='온수풀-'+(v/10000)+'만'; if(POOL_OPTIONS.some(function(p){return p.val===k;})){ key=k; return true; } });
+      if(key) r.options.push({key:key,count:1});
+      else r.warnings.push('온수풀 '+tot.toLocaleString()+'원 — 맞는 요금 칸이 없어 비워 뒀어요. 직접 골라 주세요.');
+    }
+    var bbqPaid=/(?:바베큐|바비큐|방갈로)/.test(det.replace(/프리미엄\s*(?:BBQ|바베큐|바비큐)[^+]*/g,''));
+    var bbqCoupon=/(?:방갈로|바베큐|바비큐)/.test(couponTxt);
+    if(A && (bbqPaid||bbqCoupon)){
+      var o={key:/숯/.test(det+couponTxt)?'바베큐-숯':'바베큐-가스',count:1}; if(bbqCoupon) o.coupon=true;
+      r.options.push(o);
+      if(!/숯|가스/.test(det+couponTxt)) r.warnings.push('바베큐는 가스로 넣었어요. 숯이면 바꿔 주세요.');
+    } else if(!A && (bbqPaid||bbqCoupon)) r.options.push({key:'바베큐-B',count:1});
+    if(A && /온수\s*풀/.test(couponTxt)){
+      var pi=r.options.findIndex(function(o){return /^온수풀-/.test(o.key);});
+      if(pi>=0) r.options[pi].coupon=true;
+      else r.warnings.push('온수풀 무료쿠폰이 있어요. 온수풀 요금 칸을 고르고 「쿠폰 사용(무료)」을 체크해 주세요.');
+    }
+  }
+  // ── 인원 = 채널 기준인원 + 추가인원 ──
+  var base=0;
+  if(r.room){ base = A ? (OCR_BASE_PEOPLE[r.channel]||{})[r.room.split('-').pop()]||0 : OCR_BASE_PEOPLE_B[r.room]||0; }
+  if(r.channel==='떠나요'){
+    var pp=flat.match(/총\s*(\d+)\s*명/);
+    if(pp){ r.people=+pp[1]; if(base) r.extra=Math.max(0,r.people-base); }
+    else r.people=base;
+  } else {
+    r.people = base ? base + r.extra : 0;
+  }
+  if(r.extra>0) r.options.push({key:A?'인원추가':'인원추가-B',count:r.extra});
+  return r;
+}
+
+/* ── 📷 사진으로 채우기: 화면 부분 ──
+   무료 글자 인식(Tesseract.js)은 처음 누를 때만 불러온다 (평소 앱 속도에 영향 없음).
+   사진은 기기 안에서만 읽고 어디에도 올리지 않는다. */
+var OCR_LIB_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+var _ocrWorkerP=null, _ocrBusy=false;
+function _ocrLoadLib(){
+  if(window.Tesseract) return Promise.resolve();
+  return new Promise(function(ok,no){
+    var s=document.createElement('script'); s.src=OCR_LIB_URL; s.onload=ok;
+    s.onerror=function(){ s.remove(); no(new Error('글자 인식 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.')); };
+    document.head.appendChild(s);
+  });
+}
+function _ocrGetWorker(){
+  if(!_ocrWorkerP){
+    _ocrWorkerP=_ocrLoadLib().then(function(){
+      return Tesseract.createWorker('kor+eng',1,{logger:function(m){
+        if(m && m.status==='recognizing text') _ocrStatus('🔎 글자 읽는 중… '+Math.round((m.progress||0)*100)+'%');
+        else if(m && /loading|initializ/.test(m.status||'')) _ocrStatus('⏳ 글자 인식 준비 중… (처음 한 번은 10초 정도 걸려요)');
+      }});
+    });
+    _ocrWorkerP.catch(function(){ _ocrWorkerP=null; });
+  }
+  return _ocrWorkerP;
+}
+// 사진 보정: 색 글자(파란 전화번호 등)도 진하게, 최대 2배 확대, 대비 강화
+function _ocrPrep(file){
+  return new Promise(function(ok,no){
+    var url=URL.createObjectURL(file), img=new Image();
+    img.onload=function(){
+      var sc=Math.min(2, 2000/Math.max(1,img.width));
+      var c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+      var x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+      x.drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+      var d=x.getImageData(0,0,c.width,c.height), a=d.data, f=(0.4+1)/(1-0.4);
+      for(var i=0;i<a.length;i+=4){
+        var v=Math.min(a[i],a[i+1],a[i+2]); v=f*(v-127)+127; v=v<0?0:v>255?255:v;
+        a[i]=a[i+1]=a[i+2]=v;
+      }
+      x.putImageData(d,0,0); ok(c);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); no(new Error('사진을 열지 못했어요.')); };
+    img.src=url;
+  });
+}
+function _ocrStatus(msg){ var el=document.getElementById('ocrStatus'); if(el){ el.style.display=msg?'block':'none'; el.textContent=msg||''; } }
+function ocrReset(){
+  _ocrStatus('');
+  var rb=document.getElementById('ocrResult'); if(rb){ rb.style.display='none'; rb.innerHTML=''; }
+  var fi=document.getElementById('ocrFile'); if(fi) fi.value='';
+}
+function ocrPick(){ if(_ocrBusy) return; var fi=document.getElementById('ocrFile'); if(fi){ fi.value=''; fi.click(); } }
+function ocrFromFile(input){ var f=input&&input.files&&input.files[0]; if(f) ocrRun(f); }
+function ocrRun(file){
+  if(_ocrBusy) return;
+  if(!file || !/^image\//.test(file.type||'')){ toast('사진 파일만 읽을 수 있어요'); return; }
+  _ocrBusy=true;
+  var btn=document.getElementById('ocrBtn'); if(btn){ btn.disabled=true; btn.style.opacity='.6'; }
+  var rb=document.getElementById('ocrResult'); if(rb){ rb.style.display='none'; rb.innerHTML=''; }
+  _ocrStatus('⏳ 사진 준비 중…');
+  var canvas;
+  _ocrPrep(file).then(function(c){ canvas=c; return _ocrGetWorker(); })
+  .then(function(w){ _ocrStatus('🔎 글자 읽는 중…'); return w.recognize(canvas); })
+  .then(function(res){
+    var txt=(res&&res.data&&res.data.text)||'';
+    if(!_modalOpen() || editId) return;   // 읽는 동안 창을 닫았거나 수정 창으로 바뀌었으면 채우지 않음
+    _ocrApply(parseBookingText(txt, dk(new Date())), txt);
+  })
+  .catch(function(e){ alert((e&&e.message)||'사진을 읽지 못했어요.'); })
+  .then(function(){
+    _ocrBusy=false; _ocrStatus('');
+    if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+  });
+}
+function _ocrHlNights(n){
+  [1,2,3,4].forEach(function(i){
+    var b=document.getElementById('nightBtn'+i); if(!b) return; var on=(i===n);
+    b.style.background=on?'#378ADD':'#fff'; b.style.color=on?'#fff':'#555'; b.style.borderColor=on?'#378ADD':'#e0e0e0';
+  });
+}
+function _ocrApply(r, rawText){
+  var warns=r.warnings.slice(), ok=[];
+  if(r.channel){
+    var p=r.pension||'A';
+    document.getElementById('mPension').value=p;
+    document.getElementById('mIn').value=r.checkIn||'';
+    document.getElementById('mOut').value=r.checkOut||'';
+    var sel=document.getElementById('mRoom'); sel.value='';
+    populateRooms(p);
+    if(r.room){
+      var o=Array.prototype.find.call(sel.options,function(x){return x.value===r.room;});
+      if(o){
+        sel.value=r.room;
+        if(o.disabled) warns.unshift('⚠️ '+r.roomLabel+'은(는) 그 날짜에 이미 다른 예약이 있어요. 겹치는 예약인지 확인해 주세요.');
+      } else warns.push('객실 '+r.roomLabel+'을(를) 목록에서 찾지 못했어요. 직접 골라 주세요.');
+    }
+    updateOpts();
+    setChecked(r.options);
+    _ocrHlNights(r.nights);
+    if(r.name) document.getElementById('mName').value=r.name;
+    if(r.people) document.getElementById('mPeople').value=r.people;
+    var ph=document.getElementById('mPhone'); if(r.phone){ ph.value=r.phone; fmtPhone(ph); }
+    var am=document.getElementById('mAmount'); if(r.amount){ am.value=String(r.amount); fmtAmount(am); }
+    setPaid(true); setPayMethod('card');
+    clearChannel(); setChannel(r.channel);
+    // 같은 이름·같은 체크인 예약이 이미 있으면 알림 (같은 알림을 두 번 올린 경우)
+    var dup=(r.name&&r.checkIn)?bookings.find(function(b){ return b.name===r.name && b.checkIn===r.checkIn; }):null;
+    if(dup) warns.unshift('⚠️ '+r.name+'님 '+r.checkIn+' 체크인 예약이 이미 등록돼 있어요 ('+rdisplay(dup)+'). 같은 예약이면 저장하지 마세요.');
+    ok.push('예약 경로: '+r.channel);
+    if(r.roomLabel) ok.push('객실: '+(p==='A'?'스테이 유 풀빌라 ':'스테이 느긋하게 ')+r.roomLabel);
+    if(r.checkIn) ok.push('날짜: '+r.checkIn+(r.checkOut?' ~ '+r.checkOut+' ('+r.nights+'박)':''));
+    if(r.name) ok.push('이름: '+r.name);
+    if(r.phone) ok.push('연락처: '+ph.value);
+    if(r.people) ok.push('인원: '+r.people+'명'+(r.extra?' (인원추가 '+r.extra+'명)':' (기준인원)'));
+    if(r.amount) ok.push('금액: '+r.amount.toLocaleString()+'원 · 입금완료');
+    var optTxt=r.options.filter(function(o){return !/^인원추가/.test(o.key);}).map(function(o){return o.key+(o.coupon?'(쿠폰 무료)':'')+(o.count>1?' '+o.count:'');});
+    if(optTxt.length) ok.push('옵션: '+optTxt.join(', '));
+  }
+  var rb=document.getElementById('ocrResult'); if(!rb) return;
+  var h='';
+  if(ok.length) h+='<div style="font-weight:700;color:#0F6E56;margin-bottom:4px;">✅ 사진에서 읽어 채웠어요 — 저장 전에 꼭 확인해 주세요</div><div style="color:#333;">'+ok.map(escH).join('<br>')+'</div>';
+  if(warns.length) h+='<div style="margin-top:'+(ok.length?'8':'0')+'px;padding:7px 9px;background:#FFF8E5;border:1px solid #F0C955;border-radius:8px;color:#854F0B;">'+warns.map(escH).join('<br>')+'</div>';
+  h+='<details style="margin-top:6px;"><summary style="cursor:pointer;color:#888;font-size:11px;">읽은 글자 보기</summary><pre style="white-space:pre-wrap;font-size:11px;color:#666;max-height:180px;overflow:auto;margin:4px 0 0;">'+escH(rawText||'')+'</pre></details>';
+  rb.innerHTML=h; rb.style.display='block';
+}
+// PC: 캡처 사진을 복사한 뒤 새 예약 창에서 Ctrl+V 로 붙여넣어도 읽기
+document.addEventListener('paste',function(e){
+  if(!_modalOpen() || editId) return;
+  var items=(e.clipboardData&&e.clipboardData.items)||[];
+  for(var i=0;i<items.length;i++){
+    if(items[i].kind==='file' && /^image\//.test(items[i].type)){ e.preventDefault(); ocrRun(items[i].getAsFile()); return; }
+  }
+});
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -5265,9 +5532,15 @@ document.addEventListener('visibilitychange', function(){
 //   - 로컬 파일(file://)에서는 자동 새로고침 비활성화
 //   - 직전 새로고침 시각이 10초 이내면 차단 (loop guard)
 //   - 새로고침 누적 횟수가 짧은 시간 안에 3회 초과하면 자동 업데이트 일시 정지
-const APP_VERSION = '2026-10-29-03'; // ← 새 버전 배포할 때마다 이 값을 올리세요
+const APP_VERSION = '2026-11-19-01'; // ← 새 버전 배포할 때마다 이 값을 올리세요
 // 📝 수정 이력 (맨 위가 최신)
 const CHANGELOG = [
+  { v:'2026-11-19-01', items:[
+      '📷 「예약 알림 사진으로 채우기」 추가 — 네이버·여기어때·떠나요 예약 알림 캡처를 올리면 펜션·객실·이름·연락처·날짜·인원·금액·옵션을 읽어 새 예약 창에 채움 (확인 후 저장)',
+      '인원은 채널별 기준인원 + 추가인원으로 계산, 추가인원은 인원추가 옵션에 자동 입력 / 방갈로 무료이용권은 바베큐 쿠폰(무료)로 체크',
+      '같은 이름·같은 체크인 예약이 이미 있으면 안내 / PC에서는 캡처를 복사해 Ctrl+V로도 읽기',
+      '🚫 별관 운영 종료 — 새 예약 객실 목록과 빈 객실 목록에서 별관 제외 (지난 별관 예약·통계는 그대로)'
+  ]},
   { v:'2026-10-29-03', items:[
       '🔒 「백업 파일로 복원」 때 확인 후 복원 전용 비밀번호를 한 번 더 입력해야 복원되도록 변경'
   ]},
